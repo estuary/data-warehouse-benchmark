@@ -1,0 +1,97 @@
+name: CI
+
+# Enforces the harness hardening: ruff (lint + format), the pytest suite
+# (unit + scenario + opt-in SF1 integration), and terraform validate across all
+# modules. None of these need cloud credentials. Mirrors local `uv run ...` /
+# `terraform ...`. Actions are pinned to commit SHAs (supply-chain); uv + the
+# terraform provider plugins are cached between runs.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python — ruff + pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # The results database ships via Git LFS. Without this the checkout
+          # leaves a ~130-byte pointer, and the tests that read it SKIP rather
+          # than fail — so the analysis layer would go silently unverified.
+          lfs: true
+
+      - name: Install uv (with cache)
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Sync dependencies (locked)
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run ruff check src/ tests/
+
+      - name: Ruff format check
+        run: uv run ruff format --check src/ tests/
+
+      - name: Unit + scenario tests
+        run: uv run pytest
+
+      - name: Verify the committed results DB fetched from LFS
+        run: |
+          head -c 23 results/benchmark.duckdb | grep -q 'version https://git-lfs' \
+            && { echo '::error::results/benchmark.duckdb is an LFS pointer; checkout needs lfs: true'; exit 1; } \
+            || echo "results DB materialised ($(du -h results/benchmark.duckdb | cut -f1))"
+
+      - name: SF1 integration + analysis against the committed results DB
+        run: uv run pytest --run-integration tests/integration
+
+      - name: Report rebuilds from the committed results DB
+        run: uv run benchmark report
+
+  terraform:
+    name: Terraform — fmt + validate
+    runs-on: ubuntu-latest
+    env:
+      TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform.d/plugin-cache
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Cache Terraform providers
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          # Keyed on the .tf files (which hold the provider constraints), so the
+          # cache busts when a provider version changes.
+          key: tf-providers-${{ runner.os }}-${{ hashFiles('terraform/**/*.tf') }}
+          restore-keys: |
+            tf-providers-${{ runner.os }}-
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "1.15.6"
+          terraform_wrapper: false
+
+      - name: Ensure plugin cache dir exists
+        run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
+
+      - name: Format check
+        run: terraform fmt -check -recursive terraform/
+
+      - name: Init (no backend; uses the plugin cache)
+        run: terraform -chdir=terraform init -backend=false
+
+      - name: Validate (root + all modules)
+        run: terraform -chdir=terraform validate

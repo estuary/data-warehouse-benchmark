@@ -1,0 +1,9 @@
+SELECT
+TOP 10
+  UserID,
+  COUNT_BIG(*)
+FROM hits
+GROUP BY
+  UserID
+ORDER BY
+  COUNT_BIG(*) DESC

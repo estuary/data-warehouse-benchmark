@@ -1,0 +1,29 @@
+[tools]
+azure-cli = "latest"
+duckdb = "latest"
+uv = "latest"
+prek = "latest"
+terraform = "1.15.6"
+"github:estuary/flow" = "latest"
+
+[env]
+# Per-section env files (see src/benchmark/settings.py). Each holds one engine's
+# prefixed vars; loaded into the shell so the CLIs that read OS env (terraform
+# providers, aws/bq/databricks/flowctl) see them. Missing files are skipped, so
+# this is safe before they're all created (copy env/<section>.env.example first).
+_.file = [
+  "env/aws.env",
+  "env/estuary.env",
+  "env/benchmark.env",
+  "env/snowflake.env",
+  "env/databricks.env",
+  "env/bigquery.env",
+  "env/redshift.env",
+  "env/fabric.env",
+  "env/clickhouse.env",
+  "env/motherduck.env",
+]
+_.path = ["./scripts"]
+
+[settings]
+python.uv_venv_auto = true

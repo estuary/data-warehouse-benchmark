@@ -1,0 +1,222 @@
+/* Site chrome shared by every page: top navigation, footer, inline glossary
+   terms, chart tool rows, export frames, and the building blocks the pages
+   share (page intro, cards, tables, choice chips). Page-specific rules live in
+   src/pages/<page>.css. */
+
+/* ── Top navigation ─────────────────────────────────────────────────────── */
+/* A Dark Blue band (Estuary's visual identity): the logos and title with the
+   call to action opposite, the navigation on the row below. The band runs to
+   both window edges while the content keeps the page column: a border-image
+   outset paints sideways only, adds no scrollable overflow, and clips nothing,
+   so the Engines menu can still open below the band. */
+.site-header {
+  margin: calc(-1 * var(--page-pad-top)) 0 24px; padding: 18px 0 8px; color: #fff;
+  border-image: linear-gradient(var(--brand-dark), var(--brand-dark)) fill 0 / 0 / 0 100vmax;
+}
+.site-bar { display: flex; align-items: center; gap: 12px 24px; flex-wrap: wrap; }
+.site-name {
+  display: flex; align-items: center; gap: 12px 18px; flex-wrap: wrap; margin-right: auto;
+  min-height: 24px; color: #fff; text-decoration: none;
+}
+.site-logos { display: flex; align-items: center; gap: 14px; }
+/* Estuary's clear-space rule (the icon's width beside the logo) is kept by the
+   gaps either side of it. */
+.logo-estuary { display: block; height: 22px; width: auto; }
+.logo-corrdyn { display: block; height: 14px; width: auto; }
+.logo-x { color: var(--violet-300); font-size: 14px; line-height: 1; }
+.site-title {
+  font-weight: 600; font-size: 1rem; letter-spacing: -0.01em; color: #fff;
+  padding-left: 18px; border-left: 1px solid rgba(164, 182, 244, 0.35);
+}
+.site-name:focus-visible { outline: 2px solid var(--brand-green); outline-offset: 4px; border-radius: 4px; }
+#site-nav { order: 4; flex-basis: 100%; }
+#site-nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: 2px; margin: 0 0 0 -10px; padding: 0; }
+#site-nav a, #site-nav summary {
+  display: block; padding: 6px 10px; border-radius: 6px; font-size: 0.9375rem;
+  color: var(--violet-300); text-decoration: none; cursor: pointer; list-style: none;
+}
+#site-nav summary::-webkit-details-marker { display: none; }
+/* The menu's chevron: a drawn stroke the weight of the text, not a glyph, so
+   it reads at a glance; it turns over while the menu is open. */
+#site-nav summary::after {
+  content: ""; display: inline-block; width: 7px; height: 7px; margin: 0 2px 3px 9px;
+  border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg);
+  vertical-align: middle; transition: transform 0.15s;
+}
+#site-nav details[open] > summary::after { transform: translateY(3px) rotate(225deg); }
+#site-nav a:hover, #site-nav summary:hover { color: #fff; background: rgba(164, 182, 244, 0.12); }
+#site-nav [aria-current="page"] { color: #fff; font-weight: 600; background: rgba(80, 114, 235, 0.32); }
+#site-nav a:focus-visible, #site-nav summary:focus-visible { outline: 2px solid var(--brand-green); outline-offset: 1px; }
+.has-menu { position: relative; }
+.has-menu .menu {
+  position: absolute; z-index: 30; top: 100%; left: 0; min-width: 170px;
+  display: block !important;
+  background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(4, 25, 43, 0.18);
+}
+/* The Engines menu opens onto the light page, so its links take the page's ink. */
+/* The menu is a list inside the nav's list; it does not take that list's
+   -10 px edge or its zero padding. */
+#site-nav .has-menu .menu { margin: 4px 0 0; padding: 6px; }
+#site-nav .has-menu .menu a { color: var(--ink); }
+#site-nav .has-menu .menu a:hover { background: var(--panel); }
+#site-nav .has-menu .menu a:focus-visible { outline-color: var(--accent); }
+.nav-toggle {
+  display: none; font: inherit; font-size: 0.875rem; padding: 5px 10px; cursor: pointer;
+  color: #fff; background: transparent; border: 1px solid rgba(164, 182, 244, 0.5); border-radius: 6px;
+}
+.nav-toggle:focus-visible { outline: 2px solid var(--brand-green); outline-offset: 2px; }
+.site-cta { padding: 7px 14px; font-size: 0.875rem; white-space: nowrap; }
+.site-cta:hover { background: var(--brand-blue); border-color: var(--brand-blue); }
+.site-cta:focus-visible { outline-color: var(--brand-green); }
+/* The name and the call to action share the top row; on a phone the button
+   comes before the menu toggle. */
+.site-name { order: 1; }
+.site-cta { order: 2; }
+.nav-toggle { order: 3; }
+/* Below this width the title would crowd the call to action: the logos stay,
+   and every page's heading names it. */
+@media (max-width: 1040px) {
+  .site-title { display: none; }
+}
+@media (max-width: 860px) {
+  .nav-toggle { display: inline-block; }
+  #site-nav { display: none; }
+  .site-header.nav-open #site-nav { display: block; }
+  #site-nav ul { flex-direction: column; }
+  .has-menu .menu { position: static; box-shadow: none; border: 0; background: transparent; }
+  #site-nav .has-menu .menu { margin: 0; padding: 0 0 0 16px; }
+  #site-nav .has-menu .menu a { color: var(--violet-300); }
+  #site-nav .has-menu .menu a:hover { background: rgba(164, 182, 244, 0.12); color: #fff; }
+}
+@media (max-width: 420px) {
+  .logo-estuary { height: 20px; }
+  .logo-corrdyn { height: 12.5px; }
+  .site-logos { gap: 10px; }
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.site-footer { margin-top: 48px; padding: 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.site-footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 24px; }
+.site-footer p, .site-footer li { font-size: 0.875rem; color: var(--muted); margin: 0 0 8px; }
+.site-footer ul { margin: 0; padding-left: 18px; }
+
+/* ── Page intro ─────────────────────────────────────────────────────────── */
+.intro { max-width: 92ch; margin: 0 0 20px; }
+.intro .lede { font-size: 1.125rem; color: var(--ink); }
+.intro p:not(.eyebrow) { color: var(--muted); }
+.eyebrow { font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; }
+
+/* ── Inline glossary terms ──────────────────────────────────────────────── */
+.term { text-decoration: underline dotted var(--faint); text-underline-offset: 3px; cursor: help; }
+.term:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 2px; }
+.term-tip {
+  position: absolute; z-index: 50; padding: 10px 12px; font-size: 0.875rem; line-height: 1.45;
+  background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(20, 24, 32, 0.14);
+}
+.term-tip b { display: block; margin-bottom: 3px; }
+.term-tip span { display: block; color: var(--muted); }
+.term-tip a { display: inline-block; margin-top: 6px; font-size: 0.8125rem; }
+
+/* ── Chart tools: PNG, SVG, CSV, link ───────────────────────────────────── */
+.chart-tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.chart-tools button {
+  font: inherit; font-size: 0.8125rem; color: var(--muted); background: #fff;
+  border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; cursor: pointer;
+}
+.chart-tools button:hover { color: var(--ink); border-color: var(--muted); }
+.chart-tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chart-tools button:disabled { opacity: 0.6; cursor: progress; }
+
+/* The figure an image export renders from: off-screen, self-describing. */
+.export-frame {
+  position: fixed; left: -100000px; top: 0; padding: 24px; background: #fff; color: var(--ink);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+.export-frame .export-title { font-size: 19px; font-weight: 700; margin: 0 0 2px; }
+.export-frame .export-sub { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+.export-frame .export-source { font-size: 12px; color: var(--faint); margin: 14px 0 0; }
+.export-frame .export-body > * { overflow: visible !important; }
+.export-frame .export-body svg { max-width: none !important; }
+
+/* ── Cards, tables and choices the pages share ──────────────────────────── */
+.card { margin: 20px 0 0; padding: 20px 22px; background: #fff; border: 1px solid var(--line); border-radius: 12px; scroll-margin-top: 16px; }
+.card > h2 { margin-bottom: 6px; }
+.card .question { margin: 0 0 12px; color: var(--muted); font-size: 0.9375rem; max-width: 90ch; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 14px; }
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+.data-table th { text-align: left; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); padding: 6px 10px; white-space: nowrap; }
+.data-table td { padding: 6px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+.data-table td.num, .data-table th.num { text-align: right; white-space: nowrap; }
+.data-table tr.muted td { color: var(--faint); }
+.data-table tr.lead td { background: var(--accent-soft); }
+/* Faint text on the tinted row falls under 4.5:1; use the muted grey there. */
+.data-table tr.lead small, .data-table tr.lead .dim { color: var(--muted); }
+/* Click-to-sort headings (sort-tables.js): an arrow on the sorted column only. */
+.data-table th.can-sort { cursor: pointer; user-select: none; }
+.data-table th.can-sort:hover { color: var(--ink); }
+.data-table th.can-sort:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.data-table th[aria-sort="ascending"], .data-table th[aria-sort="descending"] { color: var(--ink); }
+.data-table th[aria-sort="ascending"]::after { content: " ▴"; }
+.data-table th[aria-sort="descending"]::after { content: " ▾"; }
+.data-table caption { caption-side: bottom; text-align: left; color: var(--muted); font-size: 0.8125rem; padding-top: 8px; }
+.table-scroll { overflow-x: auto; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: -1px; }
+
+.choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.choice {
+  font: inherit; font-size: 0.875rem; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: #fff; color: var(--ink);
+}
+.choice:hover { border-color: var(--muted); }
+.choice[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.callout { padding: 12px 16px; border-left: 3px solid var(--faint); background: var(--panel); border-radius: 0 10px 10px 0; font-size: 0.9375rem; color: var(--muted); margin: 12px 0; }
+.callout b { color: var(--ink); }
+.callout.warn { border-left-color: #b26a00; }
+.source-note { font-size: 0.8125rem; color: var(--faint); margin: 8px 0 0; }
+
+/* ── Phone tables: one card per row ─────────────────────────────────────── */
+/* Below 640 px a wide table shows only its first column and a sliver of the
+   next, with the answer off to the right. Each row becomes a card instead, and each
+   cell is labelled with its column heading (data-label, set by
+   src/site/stack-tables.js). Scoped to <main> so an exported image, which is
+   rendered outside it, keeps the table layout. `no-stack` opts a table out. */
+@media (max-width: 640px) {
+  main table.data-table:not(.no-stack),
+  main table.data-table:not(.no-stack) tbody,
+  main table.data-table:not(.no-stack) tr,
+  main table.data-table:not(.no-stack) td { display: block; width: 100%; }
+  main table.data-table:not(.no-stack) thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  main table.data-table:not(.no-stack) tr[hidden] { display: none; }
+  main table.data-table:not(.no-stack) tr {
+    border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 0 0 10px;
+  }
+  main table.data-table:not(.no-stack) td {
+    border: 0; padding: 3px 0; text-align: right; white-space: normal; overflow: hidden; overflow-wrap: anywhere;
+  }
+  main table.data-table:not(.no-stack) td.num, main table.data-table:not(.no-stack) th.num { white-space: normal; }
+  main table.data-table:not(.no-stack) td[data-label]::before {
+    content: attr(data-label); float: left; max-width: 58%; padding-right: 12px;
+    text-align: left; color: var(--muted); font-weight: 600; font-size: 0.8125rem;
+  }
+  /* The first cell names the row (an engine, a size, a measure): it is the card's title. */
+  main table.data-table:not(.no-stack) td:first-child {
+    text-align: left; font-weight: 600; font-size: 1rem; padding-bottom: 6px;
+  }
+  main table.data-table:not(.no-stack) td:first-child::before { content: none; }
+  main table.data-table:not(.no-stack) td:empty { display: none; }
+  main table.data-table:not(.no-stack) caption { display: block; padding-top: 2px; }
+  /* Prose tables (idle billing): the label sits above the text, which stays left-aligned. */
+  main table.data-table.idle td { text-align: left; }
+  main table.data-table.idle td[data-label]::before { float: none; display: block; max-width: none; padding: 0 0 2px; }
+  /* Nothing left to scroll sideways once a table is cards. */
+  main .table-scroll:has(> table.data-table:not(.no-stack)) { overflow-x: visible; }
+}
+
+/* Range sliders: a 16 px track is below the 24 px minimum tap target. */
+input[type="range"] { min-height: 24px; }

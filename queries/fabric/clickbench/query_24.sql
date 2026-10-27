@@ -1,0 +1,8 @@
+SELECT
+TOP 10
+  *
+FROM hits
+WHERE
+  URL LIKE '%google%'
+ORDER BY
+  CASE WHEN EventTime IS NULL THEN 1 ELSE 0 END, EventTime

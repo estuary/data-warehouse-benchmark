@@ -1,0 +1,44 @@
+/* Compare page: the folding filter bar, the lists and tables beside charts. */
+/* Scoped to its page: the site is one document whose pages swap in place
+   (src/site/router.js), so every stylesheet is loaded on every page.
+   :where() adds no specificity, so each rule weighs as it would unscoped. */
+:where(.page-compare) {
+
+  /* The bar shows its full controls until it sticks to the top of the window;
+     then it folds to one line that states the selection (compare.js). */
+  .controls .ctl-summary { display: none; }
+  .controls .ctl-body { display: contents; }
+  .controls.compact { padding: 8px 14px; }
+  .controls.compact .ctl-summary { display: flex; align-items: center; gap: 12px; width: 100%; }
+  .controls.compact:not(.expanded) .ctl-body { display: none; }
+  .controls.compact.expanded .ctl-body { display: flex; flex-wrap: wrap; gap: 10px 28px; width: 100%; padding-top: 8px; }
+  .ctl-summary-text { font-size: 0.875rem; color: var(--ink); flex: 1 1 auto; min-width: 0; }
+  .ctl-expand {
+    font: inherit; font-size: 0.8125rem; color: var(--accent); background: #fff; white-space: nowrap;
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer;
+  }
+  .ctl-expand:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  #controls-sentinel { height: 1px; }
+
+  /* The cheapest size per level, under the frontier. */
+  .steps { margin-top: 10px; }
+  .steps ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 4px 20px; }
+  .steps li { font-size: 0.875rem; color: var(--muted); }
+  .steps b { color: var(--ink); }
+
+  .scan-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px; margin-top: 16px; }
+  .inline-input input { width: 4.5em; font: inherit; font-size: 0.875rem; padding: 1px 4px; border: 1px solid var(--line); border-radius: 4px; }
+
+  /* A section, not a <footer>: the page keeps one footer landmark, the site's. */
+  .reading {
+    margin-top: 40px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+    scroll-margin-top: calc(var(--controls-h) + 16px);
+  }
+  .reading ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 0.875rem; }
+  .reading li { margin-bottom: 8px; max-width: 90ch; }
+  .reading b { color: var(--ink); }
+
+  .takeaway b.c-speed { color: var(--accent); }
+  .takeaway b.c-cost { color: #c65a00; }
+  .engine-key { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.8125rem; color: var(--muted); margin: 0 0 6px; }
+}

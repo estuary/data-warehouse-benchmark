@@ -1,0 +1,148 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is git-ignored.
+#
+# Every engine module is OPT-IN. Leave the trigger variable empty to skip
+# that engine entirely. Recommended order: start with shared + motherduck,
+# add engines as you provision them.
+
+# ─── Shared (always required) ──────────────────────────────────────────────
+aws_region            = "us-east-1"
+aws_profile           = "benchmark"
+staging_bucket_name   = "benchmark-2026-staging-CHANGEME"
+staging_force_destroy = false
+
+# ─── BigQuery (set gcp_project_id to enable) ───────────────────────────────
+gcp_project_id                     = ""
+gcp_region                         = "us-central1"
+bigquery_reservation_slot_capacity = 100
+bigquery_staging_bucket_name       = ""
+bigquery_staging_force_destroy     = false
+bigquery_reservation_enabled       = true # expensive!
+
+# ─── Snowflake (set snowflake_account to enable) ───────────────────────────
+# snowflake_organization is optional for legacy locator-style accounts; if
+# you've migrated to the v2 organization_name/account_name pair, set both.
+# snowflake_admin_* are the PROVISIONING credentials (the user that
+# terraform authenticates as while creating BENCHMARK_DB, warehouses,
+# BENCHMARK_ROLE and BENCHMARK_USER). Typically your ACCOUNTADMIN-grade
+# user. Distinct from BENCHMARK_USER, which this module creates with a JWT
+# key pair; its key path goes in env/snowflake.env.
+#
+# snowflake_admin_private_key_path points at an unencrypted PEM private
+# key for the admin user. The provider uses authenticator=SNOWFLAKE_JWT —
+# key-pair auth bypasses MFA (which Snowflake admin accounts typically
+# require) and, unlike a PAT, does not expire on a clock. Generate the key
+# and register the public half once:
+#   openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out sf_admin_key.p8 -nocrypt
+#   openssl rsa -in sf_admin_key.p8 -pubout -out sf_admin_key.pub
+#   ALTER USER <admin> SET RSA_PUBLIC_KEY='<paste .pub body, no header/footer>';
+snowflake_organization           = ""
+snowflake_account                = ""
+snowflake_admin_user             = ""
+snowflake_admin_private_key_path = ""
+snowflake_region                 = "us-east-1"
+
+# Network policy for the harness's BENCHMARK_USER. Required when the account has
+# REQUIRE_NETWORK_POLICY=TRUE. Two ways to set it:
+#
+#   A) Reference an EXISTING policy by name (terraform won't create it). If it's
+#      VPN-only, the harness works but Estuary's load (from Estuary Cloud's NAT
+#      egress IPs) is blocked until that policy is extended:
+#        snowflake_benchmark_user_network_policy = "MY_VPN_POLICY"
+#
+#   B) Let terraform MANAGE a policy (recommended): leave the name empty and set
+#      your access/VPN CIDR(s) below. Terraform creates BENCHMARK_NETWORK_POLICY
+#      = your CIDRs + Estuary's egress IPs and assigns it — so both the harness
+#      and Estuary can connect. Find your VPN ranges via:
+#        DESCRIBE NETWORK POLICY MY_VPN_POLICY
+snowflake_benchmark_user_network_policy = ""
+
+# Operator/VPN CIDRs allowed to connect as BENCHMARK_USER (path B above).
+# e.g. ["203.0.113.0/24"]. Leave [] to skip the managed policy.
+snowflake_benchmark_access_cidrs = []
+
+# Estuary Cloud egress IPs folded into the managed policy. Default is the AWS
+# us-east-1 c1 public data plane; refresh from the Estuary dashboard
+# (Admin > Settings > Data Planes > Public) if your data plane differs.
+snowflake_estuary_egress_cidrs = ["107.20.68.5/32", "98.89.112.85/32"]
+
+# RSA public key for BENCHMARK_USER (TYPE = SERVICE uses JWT key-pair auth,
+# not password). Generate the keypair outside terraform so the private key
+# never enters state:
+#
+#   mkdir -p ~/.snowflake && chmod 700 ~/.snowflake
+#   openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM \
+#     -out ~/.snowflake/benchmark_key.p8 -nocrypt
+#   openssl rsa -in ~/.snowflake/benchmark_key.p8 -pubout \
+#     -out ~/.snowflake/benchmark_key.pub
+#   chmod 600 ~/.snowflake/benchmark_key.p8
+#
+# Paste the contents of benchmark_key.pub here (BEGIN/END markers OK; module
+# strips them automatically). Then in env/snowflake.env, set:
+#   SNOWFLAKE_BENCHMARK_PRIVATE_KEY_FILE=~/.snowflake/benchmark_key.p8
+snowflake_benchmark_user_rsa_public_key = <<-EOT
+-----BEGIN PUBLIC KEY-----
+...paste base64 body here...
+-----END PUBLIC KEY-----
+EOT
+
+# ─── Databricks (set databricks_host to enable) ────────────────────────────
+# Azure bring-up is TWO-STAGED (see terraform/README.md "Azure Databricks
+# bring-up"):
+#   1. Set databricks_azure_enabled = true (requires fabric_subscription_id +
+#      fabric_tenant_id — the shared Azure providers) and run
+#      `terraform apply -target='module.databricks_azure'`.
+#   2. Set databricks_host from `terraform output -raw
+#      databricks_azure_workspace_url`, leave databricks_token empty (the
+#      provider then authenticates off `az login` and mints the harness PAT,
+#      exported as databricks_harness_token), and run a plain apply.
+databricks_azure_enabled  = false
+databricks_azure_location = "eastus"
+databricks_host           = ""
+databricks_token          = ""
+databricks_warehouse_size = "Medium"
+
+# ─── Redshift Serverless (set redshift_enabled = true to enable) ──────────
+# Admin password is auto-generated by the module's random_password resource.
+# After apply, pull it with `terraform output -raw redshift_admin_password`.
+# Only set redshift_admin_password_override if you need a specific value.
+redshift_enabled                 = false
+redshift_admin_password_override = ""
+
+# ─── Microsoft Fabric (set fabric_subscription_id to enable) ──────────────
+# fabric_subscription_id + fabric_tenant_id also target the shared root Azure
+# providers used by databricks_azure. Set fabric_enabled = false to keep the
+# subscription configured for Databricks without provisioning Fabric.
+fabric_subscription_id = ""
+fabric_tenant_id       = ""
+fabric_enabled         = true
+fabric_location        = "eastus"
+fabric_capacity_sku    = "F64"
+
+# ─── ClickHouse Cloud (set clickhouse_service_id to enable) ────────────────
+# No-op terraform module — the "Estuary Benchmark" service is managed in
+# the ClickHouse Cloud UI. `clickhouse_service_id` (the service UUID, found
+# in the Cloud UI URL .../services/<UUID>) is recorded here for state
+# symmetry. Copy CLICKHOUSE_HOST / PORT / PASSWORD (and the Cloud API key)
+# from the Cloud UI directly into env/clickhouse.env.
+clickhouse_service_id = ""
+
+# ─── MotherDuck (always on; configures the harness, not a real provider) ──
+motherduck_database = "benchmark_db"
+motherduck_tier     = "standard"
+
+# ─── Datagen EC2 (set datagen_enabled = true to provision) ─────────────────
+# Ephemeral box for TPC-DS/DSB generation + in-region S3 staging at SF100+.
+# Native Linux dsdgen (no Docker), gp3 /data volume, instance role scoped to
+# the staging bucket, SSM Session Manager access (SSH optional via key+CIDR).
+# Flip back to false and re-apply to tear down between generation campaigns.
+#
+# BEFORE apply, upload the repo tarball so user-data can self-provision
+# (repo -> /data/repo, env files, uv sync — see the module header):
+#   git archive --format=tar.gz -o /tmp/benchmark-repo.tar.gz HEAD
+#   aws s3 cp /tmp/benchmark-repo.tar.gz \
+#     s3://<staging-bucket>/bootstrap/benchmark-repo.tar.gz --profile benchmark
+datagen_enabled          = false
+datagen_instance_type    = "m8i.8xlarge"
+datagen_data_volume_gb   = 3500
+datagen_ssh_public_key   = "" # empty = SSM-only access
+datagen_allowed_ssh_cidr = "" # e.g. "203.0.113.7/32"

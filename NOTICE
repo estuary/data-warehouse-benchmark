@@ -1,0 +1,56 @@
+2026 Cloud Data Warehouse Benchmark
+Copyright 2026 Estuary Technologies, Inc. and Correlation Dynamics, Inc.
+
+This repository is licensed under the Apache License, Version 2.0 (LICENSE),
+except for the third-party material listed below, which keeps its own license.
+Full texts of the third-party licenses are in LICENSES/.
+
+
+ClickBench queries: not covered by the Apache License
+  Paths:   queries/*/clickbench/ (every engine, including queries/duckdb/clickbench/)
+  Source:  ClickBench, https://github.com/ClickHouse/ClickBench, by the ClickBench authors
+  License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+           https://creativecommons.org/licenses/by-nc-sa/4.0/
+  Changes: Each engine's queries are taken from the ClickBench project's files for that
+           engine and may be adapted to this repository's schema names and dialect
+           fixes. queries/fabric/clickbench/ is a T-SQL translation of
+           queries/duckdb/clickbench/. These files, and adaptations of them, remain
+           under CC BY-NC-SA 4.0. See queries/CLICKBENCH_NOTICE.md.
+  Data:    The ClickBench `hits` dataset is downloaded from its public source by
+           `benchmark download-clickbench`; it is not redistributed here.
+
+TPC-DS-derived queries
+  Paths:   queries/*/tpcds/, queries/*/dsb/
+  The TPC-DS queries are generated from the TPC-DS specification with DuckDB's
+  tpcds extension, under the TPC End User License Agreement:
+  https://www.tpc.org/tpc_documents_current_versions/txt/tpc-eula_v2.2.0.txt
+  TPC Benchmark and TPC-DS are trademarks of the Transaction Processing Performance
+  Council. The results in this repository are not audited TPC results and are not
+  comparable to published TPC-DS results.
+
+DSB
+  Paths:   queries/*/dsb/, scripts/data/build_dsb_queries.py, docker/dsb/
+  Source:  https://github.com/microsoft/dsb, Copyright (c) Microsoft Corporation.
+  License: MIT (LICENSES/DSB-MIT.txt)
+  Notice:  The DSB benchmark is derived from TPC-DS and as such is not comparable to
+           published TPC-DS results, as the DSB benchmark does not comply with the
+           TPC-DS benchmark.
+
+DuckDB-WASM and the DuckDB Parquet extension
+  Paths:   viz/public/duckdb/
+  Source:  https://github.com/duckdb/duckdb-wasm, https://github.com/duckdb/duckdb
+           Copyright Stichting DuckDB Foundation
+  License: MIT (LICENSES/DuckDB-MIT.txt)
+
+Inter typeface (bundled into the explorer's build from @fontsource-variable/inter)
+  Source:  https://github.com/rsms/inter, Copyright 2016 The Inter Project Authors
+  License: SIL Open Font License 1.1 (LICENSES/Inter-OFL-1.1.txt)
+
+
+Trademarks
+  The Estuary and CorrDyn names and logos (including viz/src/brand/) are trademarks
+  of their owners. The Apache License does not grant permission to use them
+  (section 6). Snowflake, Databricks, Google BigQuery, Amazon Redshift, Microsoft
+  Fabric, ClickHouse, MotherDuck and other product names are trademarks of their
+  respective owners; they are used here only to identify the products measured,
+  and their use implies no endorsement.

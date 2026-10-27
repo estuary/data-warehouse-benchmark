@@ -1,0 +1,133 @@
+# === Credentials & Secrets ===
+.env
+.env.*
+.mise.local.toml
+!.env.example
+# Per-section settings files hold real secrets; *.env.example templates are committed.
+env/*.env
+!env/*.env.example
+terraform.tfvars
+terraform.tfvars.json
+*.tfvars
+*.auto.tfvars.json
+!*.tfvars.example
+sa-key.json
+**/sa-key.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.p8
+
+# === Terraform ===
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
+# `export-terraform-outputs` writes this; it contains sensitive outputs
+# (base64 SA-key JSON, etc.) — never commit it.
+terraform/outputs.json
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.whl
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# === uv ===
+.uv/
+
+# === Data files (generated, not committed) ===
+# Use sf*/ rather than the whole suite dir so files like
+# data/tpcds/expected_counts.json (the row-count manifest) can still be tracked:
+# git can't un-ignore a file whose parent dir is fully excluded.
+data/tpcds/sf*/
+data/dsb/sf*/
+# Generators emit a doubled-path layout (data/<suite>/<suite>/sf*/); ignore those too.
+data/tpcds/tpcds/
+data/dsb/dsb/
+data/clickbench/
+data/CHECKSUMS.json
+
+# === Results (local DuckDB + generated artifacts, regenerated) ===
+results/*.duckdb
+results/*.duckdb.wal
+results/*.duckdb.tmp
+# ...except the results database itself, which ships with the repo via Git LFS
+# (see .gitattributes). The .wal/.tmp siblings above stay ignored: they are
+# transient and meaningless outside a live connection.
+!results/benchmark.duckdb
+results/*.json
+# cost_config.json is version-controlled as a working baseline (it gates
+# `benchmark sql`); refresh with `capture-cost-config` before benchmarking.
+!results/cost_config.json
+# Resumable-pass progress journals (e.g. optimize), written per engine.
+results/*.jsonl
+# The analysis exports ship with the repo via Git LFS (see .gitattributes) so a
+# clone can build the explorer without first regenerating them.
+!results/exports/
+# Pre-repair snapshots of the results DB, kept locally so a re-cost or
+# quarantine can be reversed. Never committed.
+results/backups/
+# Per-invocation JSON audit log directory written by logging_config.py.
+results/logs/
+
+# === Report outputs (regenerated from data) ===
+# `benchmark report` renders these from results/benchmark.duckdb, which ships
+# with the repo, so they are rebuildable and not tracked; they also regenerate
+# on every data change and would bloat history (draft.html ~6MB, PNGs ~14MB).
+# What IS tracked under report/ is the authored prose in report/sections/*.md:
+# the generator composes those at their anchors and substitutes {{fact:...}}
+# placeholders and marked tables from the database. The prose is written by
+# hand and is not derivable from anything.
+report/*.html
+report/draft.md
+report/assets/
+!report/sections/
+
+# `benchmark render-status --template <file>` renders a status page from an HTML
+# template the operator supplies (none ships with the repository), resolving its
+# {{fact:...}} placeholders against the results DB. report/*.html above keeps any
+# template or rendered page under report/ out of git.
+
+# === OS files ===
+.DS_Store
+Thumbs.db
+
+# === IDE ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# === Node (MCP servers) ===
+node_modules/
+
+# === Vendored external generators (e.g. microsoft/dsb built locally) ===
+vendor/
+
+# === Estuary substituted catalog specs (regenerated on every publish) ===
+estuary/.applied/
+
+# === Jupyter ===
+.ipynb_checkpoints/
+/data/generators/
+
+# === Agent ===
+.claude/projects/*
+.claude/settings.local.json
+results/estuary_throughput/
+!results/exports/*.parquet

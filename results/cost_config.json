@@ -1,0 +1,224 @@
+{
+  "version": 1,
+  "platforms": {
+    "bigquery": {
+      "tier": "enterprise",
+      "sizes": {
+        "on-demand": {
+          "tier": "on-demand"
+        },
+        "ENTERPRISE / 200 slots": {
+          "tier": "enterprise",
+          "slot_capacity": 200
+        },
+        "ENTERPRISE / 400 slots": {
+          "tier": "enterprise",
+          "slot_capacity": 400
+        },
+        "ENTERPRISE / 600 slots": {
+          "tier": "enterprise",
+          "slot_capacity": 600
+        },
+        "ENTERPRISE / 800 slots": {
+          "tier": "enterprise",
+          "slot_capacity": 800
+        },
+        "ENTERPRISE / 1000 slots": {
+          "tier": "enterprise",
+          "slot_capacity": 1000
+        },
+        "ENTERPRISE / 500 slots": {
+          "tier": "enterprise",
+          "slot_capacity": 500
+        },
+        "ENTERPRISE / 100 slots": {
+          "tier": "enterprise",
+          "slot_capacity": 100
+        }
+      },
+      "slot_capacity": 100
+    },
+    "motherduck": {
+      "tier": "pulse",
+      "sizes": {
+        "Giga": {
+          "tier": "giga"
+        },
+        "Jumbo": {
+          "tier": "jumbo"
+        },
+        "Mega": {
+          "tier": "mega"
+        },
+        "Pulse": {
+          "tier": "pulse"
+        },
+        "Standard": {
+          "tier": "standard"
+        }
+      }
+    },
+    "clickhouse": {
+      "sizes": {
+        "1x16GB": {
+          "vcpus": 4,
+          "replicas": 1
+        },
+        "1x32GB": {
+          "vcpus": 16,
+          "replicas": 1
+        },
+        "2x32GB": {
+          "vcpus": 8,
+          "replicas": 2
+        },
+        "3x120GB": {
+          "vcpus": 30,
+          "replicas": 3
+        },
+        "3x16GB": {
+          "vcpus": 4,
+          "replicas": 3
+        },
+        "3x24GB": {
+          "vcpus": 6,
+          "replicas": 3
+        },
+        "3x32GB": {
+          "vcpus": 8,
+          "replicas": 3
+        },
+        "3x48GB": {
+          "vcpus": 12,
+          "replicas": 3
+        },
+        "3x64GB": {
+          "vcpus": 16,
+          "replicas": 3
+        },
+        "3x8GB": {
+          "vcpus": 2,
+          "replicas": 3
+        },
+        "3x96GB": {
+          "vcpus": 8,
+          "replicas": 3
+        },
+        "1x120GB": {
+          "vcpus": 12,
+          "replicas": 1
+        },
+        "1x64GB": {
+          "vcpus": 16,
+          "replicas": 1
+        },
+        "1x8GB": {
+          "vcpus": 2,
+          "replicas": 1
+        }
+      },
+      "vcpus": 30,
+      "replicas": 3
+    },
+    "redshift": {
+      "baseline_rpu": 16,
+      "sizes": {
+        "8 RPU": {
+          "baseline_rpu": 8
+        },
+        "16 RPU": {
+          "baseline_rpu": 16
+        },
+        "32 RPU": {
+          "baseline_rpu": 32
+        },
+        "64 RPU": {
+          "baseline_rpu": 64
+        },
+        "128 RPU": {
+          "baseline_rpu": 128
+        }
+      }
+    },
+    "fabric": {
+      "capacity": "f8",
+      "sizes": {
+        "F8": {
+          "capacity": "f8"
+        },
+        "F2": {
+          "capacity": "f2"
+        },
+        "F16": {
+          "capacity": "f16"
+        },
+        "F4": {
+          "capacity": "f4"
+        },
+        "F128": {
+          "capacity": "f128"
+        },
+        "F64": {
+          "capacity": "f64"
+        },
+        "F32": {
+          "capacity": "f32"
+        }
+      }
+    },
+    "databricks": {
+      "sizes": {
+        "2X-Small": {
+          "size": "2x-small"
+        },
+        "Large": {
+          "size": "large"
+        },
+        "Medium": {
+          "size": "medium"
+        },
+        "Small": {
+          "size": "small"
+        },
+        "X-Small": {
+          "size": "x-small"
+        }
+      }
+    }
+  },
+  "compute": {
+    "motherduck": {
+      "size": "Pulse"
+    },
+    "snowflake": {
+      "size": "X-Small",
+      "type": "STANDARD"
+    },
+    "clickhouse": {
+      "num_replicas": 3,
+      "min_replica_memory_gb": 120,
+      "max_replica_memory_gb": 120,
+      "state": "running",
+      "vcpus": 30,
+      "replicas": 6
+    },
+    "redshift": {
+      "base_capacity": 16,
+      "max_capacity": 16
+    },
+    "databricks": {
+      "cluster_size": "X-Small",
+      "min_num_clusters": 1,
+      "max_num_clusters": 1
+    },
+    "fabric": {
+      "capacity_sku": "F8",
+      "state": "Active"
+    },
+    "bigquery": {
+      "slot_capacity": 100,
+      "edition": "ENTERPRISE"
+    }
+  },
+  "errors": {}
+}

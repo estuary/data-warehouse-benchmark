@@ -1,0 +1,44 @@
+/* Engine page: one template for all seven engines. */
+/* Scoped to its page: the site is one document whose pages swap in place
+   (src/site/router.js), so every stylesheet is loaded on every page.
+   :where() adds no specificity, so each rule weighs as it would unscoped. */
+:where(.page-engine) {
+  .engine-switch { margin: 0 0 18px; }
+  .engine-switch .choice { display: inline-flex; align-items: center; }
+
+  .engine-intro { margin: 8px 0 8px; }
+  .engine-intro h1 { margin-bottom: 8px; }
+  .engine-intro .lede { max-width: 92ch; color: var(--ink); font-size: 1.0625rem; }
+  /* Section labels under the h1: h2 for the outline, styled as small caps like h3. */
+  .engine-intro .subhead { font-size: 0.9375rem; margin: 12px 0 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .engine-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px; margin-top: 12px; }
+  .engine-summary-grid ul { margin: 0 0 10px; padding-left: 18px; font-size: 0.9375rem; color: var(--muted); }
+  .engine-summary-grid li { margin-bottom: 6px; }
+  .engine-summary-grid dl { margin: 0; font-size: 0.9375rem; }
+  .engine-summary-grid dt { font-weight: 600; color: var(--ink); margin-top: 8px; }
+  .engine-summary-grid dd { margin: 2px 0 0; color: var(--muted); }
+  .guide-box { margin: 0; border-left-color: var(--accent); }
+  .guide-box .eyebrow { margin-bottom: 2px; }
+  .engine-links { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 16px 0 0; font-size: 0.9375rem; }
+  .engine-links a { display: inline-block; padding: 2px 0; }
+
+  .engine-controls { margin: 0 0 12px; }
+  .ctl-inline { display: inline-flex; align-items: center; gap: 10px; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+  .ctl-inline input[type="range"] { width: 200px; accent-color: var(--accent); }
+  .ctl-inline output { font-variant-numeric: tabular-nums; color: var(--ink); min-width: 4ch; }
+
+  .figure-label { margin: 10px 0 4px; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+  .ds-control { margin: 0 0 10px; }
+  .ds-control .ctl-label { margin: 0 0 6px; }
+  #eng-pat-cb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+  #eng-pat-cb[hidden] { display: none; }
+  #eng-pat-cb p { margin: 0; }
+  #eng-ladder-legend, #eng-load-legend, #eng-pat-legend { margin-bottom: 6px; }
+  .figure > div { overflow-x: auto; }
+  .dim { color: var(--faint); }
+  .data-table td b { color: var(--accent); }
+
+  @media (max-width: 640px) {
+    .ctl-inline input[type="range"] { width: 140px; }
+  }
+}

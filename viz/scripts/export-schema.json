@@ -1,0 +1,131 @@
+{
+  "cost_curves.parquet": {
+    "platform": "VARCHAR",
+    "query_id": "VARCHAR",
+    "block": "VARCHAR",
+    "scale_factor": "INTEGER",
+    "median_server_ms": "DOUBLE",
+    "median_ms": "DOUBLE",
+    "p95_ms": "DOUBLE",
+    "mean_cost_usd": "DOUBLE",
+    "failures": "DOUBLE"
+  },
+  "clickbench_summary.parquet": {
+    "platform": "VARCHAR",
+    "query_id": "VARCHAR",
+    "compute_tag": "INTEGER",
+    "compute_label": "VARCHAR",
+    "median_server_ms": "DOUBLE",
+    "median_ms": "DOUBLE",
+    "mean_cost_usd": "DOUBLE",
+    "failures": "DOUBLE",
+    "runs": "BIGINT",
+    "is_entry_tier": "BOOLEAN"
+  },
+  "concurrency_grid.parquet": {
+    "workload": "VARCHAR",
+    "platform": "VARCHAR",
+    "scale_factor": "INTEGER",
+    "compute_label": "VARCHAR",
+    "concurrency": "INTEGER",
+    "p50_ms": "DOUBLE",
+    "shed_pct": "DOUBLE",
+    "client_capped_pct": "DOUBLE",
+    "runs": "BIGINT",
+    "server_p50_ms": "DOUBLE",
+    "engine_time_pct": "DOUBLE",
+    "timeout_pct": "DOUBLE",
+    "connection_pct": "DOUBLE",
+    "engine_error_pct": "DOUBLE",
+    "k": "DOUBLE",
+    "r_squared": "DOUBLE",
+    "shed_pct_at_max": "DOUBLE",
+    "max_level": "INTEGER",
+    "solo_latency_ms": "DOUBLE",
+    "failure_mode": "VARCHAR",
+    "publishable": "BOOLEAN",
+    "withheld_reason": "VARCHAR",
+    "usd_per_hour": "DOUBLE",
+    "sla_max_shed_pct": "DECIMAL(2,1)",
+    "max_client_capped_pct": "DECIMAL(2,1)"
+  },
+  "pattern_load.parquet": {
+    "platform": "VARCHAR",
+    "scale_factor": "INTEGER",
+    "compute_label": "VARCHAR",
+    "concurrency": "INTEGER",
+    "pattern": "VARCHAR",
+    "pattern_ms": "DOUBLE",
+    "n": "BIGINT",
+    "cell_ms": "DOUBLE",
+    "cell_n": "BIGINT"
+  },
+  "skew_load.parquet": {
+    "platform": "VARCHAR",
+    "scale_factor": "INTEGER",
+    "compute_label": "VARCHAR",
+    "concurrency": "INTEGER",
+    "skew_ratio": "DOUBLE",
+    "tpcds_ms": "DOUBLE",
+    "dsb_ms": "DOUBLE",
+    "pairs": "BIGINT"
+  },
+  "skew_impact.parquet": {
+    "platform": "VARCHAR",
+    "qnum": "INTEGER",
+    "scale_factor": "INTEGER",
+    "tpcds_server_ms": "DOUBLE",
+    "dsb_server_ms": "DOUBLE",
+    "delta_server_ms": "DOUBLE",
+    "delta_pct": "DOUBLE",
+    "tpcds_wall_ms": "DOUBLE",
+    "dsb_wall_ms": "DOUBLE",
+    "tpcds_cost": "DOUBLE",
+    "dsb_cost": "DOUBLE"
+  },
+  "row_count_agreement.parquet": {
+    "block": "VARCHAR",
+    "query_id": "VARCHAR",
+    "scale_factor": "INTEGER",
+    "platform": "VARCHAR",
+    "row_count": "BIGINT",
+    "runs": "BIGINT",
+    "distinct_counts": "BIGINT"
+  },
+  "size_ladder.parquet": {
+    "platform": "VARCHAR",
+    "block": "VARCHAR",
+    "scale_factor": "INTEGER",
+    "compute_label": "VARCHAR",
+    "query_id": "VARCHAR",
+    "median_server_ms": "DOUBLE",
+    "mean_cost_usd": "DOUBLE",
+    "runs": "BIGINT",
+    "failures": "DOUBLE",
+    "first_run_at": "TIMESTAMP",
+    "last_run_at": "TIMESTAMP"
+  },
+  "rate_card.parquet": {
+    "platform": "VARCHAR",
+    "compute_label": "VARCHAR",
+    "billing_unit": "VARCHAR",
+    "usd_per_hour": "DOUBLE"
+  },
+  "query_catalog.parquet": {
+    "query_id": "VARCHAR",
+    "block": "VARCHAR",
+    "number": "INTEGER",
+    "patterns": "VARCHAR[]",
+    "sql_path": "VARCHAR",
+    "returns_pair": "BOOLEAN"
+  },
+  "scale_skips.parquet": {
+    "platform": "VARCHAR",
+    "scale_factor": "INTEGER",
+    "block": "VARCHAR",
+    "compute_label": "VARCHAR",
+    "run_type": "VARCHAR",
+    "reason": "VARCHAR",
+    "skipped_on": "VARCHAR"
+  }
+}

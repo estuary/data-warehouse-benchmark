@@ -1,0 +1,9 @@
+SELECT
+TOP 10
+  RegionID,
+  COUNT_BIG(DISTINCT UserID) AS u
+FROM hits
+GROUP BY
+  RegionID
+ORDER BY
+  u DESC

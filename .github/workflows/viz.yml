@@ -1,0 +1,175 @@
+name: Explorer
+
+# Builds the client-side explorer in viz/ and publishes it to GitHub Pages, then
+# loads the published pages (scripts/smoke.mjs) so a broken deploy fails here.
+# Path-filtered so unrelated pushes do not run it. Actions are pinned to commit
+# SHAs, as in ci.yml.
+#
+# The full browser suite (Playwright: every view's mark count equals its SQL row
+# count, every control re-filters, nothing leaves the page's origin, the page
+# reloads offline) does NOT run on every push: it takes minutes on a hosted
+# runner and runs in parallel in a fraction of that locally, so contributors run
+# it before pushing (`npm run build && npm test` in viz/, see viz/README.md).
+# To run it here, use "Run workflow" on this workflow (workflow_dispatch) and
+# pick the branch; that run tests only and never deploys.
+#
+# Pages holds one site per repository, so a review preview shares it:
+#
+#   <pages url>/            main, always
+#   <pages url>/preview/    the most recently pushed `preview/*` branch
+#
+# A push to main or to a `preview/*` branch rebuilds both from source and
+# deploys them together, so neither push can drop the other's copy. A preview
+# disappears on the next deploy after its branch is deleted (on merge). The
+# `github-pages` environment must allow `preview/*` branches to deploy
+# (Settings > Environments > github-pages > Deployment branches).
+
+on:
+  push:
+    branches: [main, 'preview/**']
+    paths:
+      - 'viz/**'
+      - 'results/exports/**'
+      - '.github/workflows/viz.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: viz-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-tests:
+    name: Browser tests (on demand)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: viz
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # The parquet exports, the DuckDB module and the Parquet extension
+          # ship via Git LFS. prepare-data.mjs fails loudly on a pointer stub.
+          lfs: true
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: viz/package-lock.json
+
+      - name: Install dependencies (locked)
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests against the built bundle
+        # One worker per core (the config's default): the tests are independent
+        # and wait on page state.
+        run: npm test
+
+      - name: Shipped size
+        run: du -sh dist && du -sh dist/* | sort -h
+
+  assemble:
+    name: Assemble main and the preview
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      preview: ${{ steps.preview.outputs.branch }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: main
+          lfs: true
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: viz/package-lock.json
+
+      - name: Build main at the site root
+        working-directory: viz
+        run: npm ci && npm run build && cp -R dist "$GITHUB_WORKSPACE/site"
+
+      # The preview is the branch that triggered this run, or on a push to main
+      # the most recently committed `preview/*` branch still on the remote.
+      - name: Choose the preview branch
+        id: preview
+        run: |
+          if [[ "$GITHUB_REF_NAME" == preview/* ]]; then
+            branch="$GITHUB_REF_NAME"
+          else
+            branch=$(git for-each-ref --sort=-committerdate --format='%(refname:lstrip=3)' 'refs/remotes/origin/preview/*' | head -1)
+          fi
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "preview branch: ${branch:-none}"
+
+      - name: Build the preview under /preview/
+        if: steps.preview.outputs.branch != ''
+        env:
+          BRANCH: ${{ steps.preview.outputs.branch }}
+        run: |
+          git worktree add ../preview-src "origin/$BRANCH"
+          cd ../preview-src && git lfs pull && cd viz
+          npm ci && npm run build
+          cp -R dist "$GITHUB_WORKSPACE/site/preview"
+
+      - name: Shipped size
+        run: du -sh site && du -sh site/* | sort -h | tail -5
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name == 'push'
+    needs: assemble
+    runs-on: ubuntu-latest
+    # One deploy at a time across branches: main and a preview push both
+    # publish the whole site, and the later one must land last.
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
+    permissions:
+      contents: read # the smoke test checks the repo out; a job-level block replaces the default
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+      # Pages can report a successful deploy and still serve a broken page (a
+      # stale asset, a missing wasm). Load the published URLs and require each
+      # page's own ready marker, so the workflow fails when a reader would.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: viz/package-lock.json
+      - name: Smoke-test the published site
+        working-directory: viz
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          PREVIEW: ${{ needs.assemble.outputs.preview }}
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          node scripts/smoke.mjs
+          if [ -n "$PREVIEW" ]; then
+            PAGE_URL="${PAGE_URL%/}/preview/" node scripts/smoke.mjs
+            echo "### Preview of \`$PREVIEW\`: ${PAGE_URL%/}/preview/" >> "$GITHUB_STEP_SUMMARY"
+          fi

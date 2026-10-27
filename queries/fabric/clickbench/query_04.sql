@@ -1,0 +1,3 @@
+SELECT
+  AVG(CAST(UserID AS FLOAT))
+FROM hits

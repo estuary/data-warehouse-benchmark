@@ -1,0 +1,123 @@
+# Run-plan — compute target per engine per scale (1 ≈ 1 GB … 1000 ≈ 1 TB).
+#
+# Single source of truth for sizing policy: the values prepare-scale writes into
+# tfvars, the target it validates the live infra against, what the recorded cost
+# rate corresponds to, and Snowflake's per-scale warehouse selection.
+#
+# Shape: <engine>: { <knob>: { <scale>: <target> } }
+#   - <knob> is the tfvar / cost-collector field the value feeds.
+#   - A missing (engine, scale) cell means "skip that platform at that scale"
+#     (e.g. fabric above SF1000 — 4 TB OneLake storage cap).
+#   - An engine may carry recognized policy keys (currently `on_demand`) alongside
+#     its single sizing knob; values are allow|deny per scale (see bigquery).
+#   - `sweep:` declares the size LADDER a sizing sweep walks, smallest first: a
+#     different question from the knob map, which names the ONE designated target
+#     per scale (this study's own assignment, per the curve principle below; vendors
+#     do not publish recommended sizes by data volume). Sizing policy: **take the
+#     ladder from the vendor's own published sizing where it exists, and from this
+#     matrix where no guidance is given.** ("Published sizing" means the vendor's
+#     menu of sizes, not advice on which size suits a data volume.) Each ladder
+#     below cites its source. Declaring it makes a sweep's intended extent
+#     checkable: otherwise a deliberately short ladder and an unfinished one are
+#     indistinguishable.
+#
+# Curve principle: roughly 2× compute per 10× data, starting small.
+
+# snowflake sweep: the vendor's own warehouse T-shirt ladder, each step exactly 2x
+# the credits of the one below — so "does doubling the compute halve the time" is the
+# vendor's question asked in the vendor's units.
+snowflake:
+  warehouse: { 1: XSMALL, 10: SMALL, 100: MEDIUM, 1000: LARGE }
+  sweep:     [XSMALL, SMALL, MEDIUM, LARGE, XLARGE]
+# databricks sweep: the vendor's published SQL-warehouse T-shirt ladder, whose DBU
+# rates we already encode (cost/databricks.py DBU_PER_HOUR: 2X-Small 4, X-Small 6,
+# Small 12, Medium 24, Large 40; roughly, not exactly, doubling at each step).
+# Stops at Large: that is the designated size at SF1000, so going further would
+# sweep past the largest cell the plan actually benchmarks.
+databricks:
+  warehouse_size: { 1: X-Small, 10: Small, 100: Medium, 1000: Large }
+  sweep:          [2X-Small, X-Small, Small, Medium, Large]
+# bigquery: on-demand is fine at low scales (no expensive reservation); at SF1000+ on-demand is
+# denied so huge ad-hoc scans can't run up a giant bill — a slot reservation is required instead.
+bigquery:
+  reservation_slots: { 1: 100,   10: 100,   100: 200,   1000: 500 }
+  on_demand:         { 1: allow, 10: allow, 100: allow, 1000: deny }
+  # No vendor T-shirt ladder exists — slots are a continuous dial — so the ladder
+  # comes from this matrix, in 100-slot steps. (BigQuery also sells a 50-slot
+  # reservation; it is not measured, so 100 slots is the smallest size here.)
+  # Every rung is measured, including the designated sizes, so canonical.py's
+  # nearest-swept-count fallback does not fire for bigquery. The bottom rung
+  # carries half the curve's range: at 1 TB, 100 slots is 4.69s median against
+  # 2.18s at 600.
+  sweep:             [100, 200, 400, 500, 600, 800, 1000]
+# redshift sweep: RPU is the vendor's own capacity unit and it is continuous, so the
+# ladder is this matrix's doubling series extended to the largest band measured.
+redshift:
+  baseline_rpu: { 1: 8, 10: 8, 100: 16, 1000: 64 }
+  sweep:        [8, 16, 32, 64, 128]
+# fabric sweep: the vendor's full F-SKU doubling series, F2 through F128 —
+# every step 2x, the same
+# shape the other engines are swept on (Redshift 8/16/32/64/128 RPU, ClickHouse
+# 8/16/32/64/120 GB), so a per-step gain means the same thing across engines.
+#
+# ClickBench walks the full ladder too, warm and under concurrency (levels
+# 1/5/10/20/50/100), mirroring ClickHouse's single-replica warm ClickBench
+# ladder, so Fabric's scan ceiling is measured on the same ladder as its
+# decision-support suites.
+fabric:
+  capacity_sku: { 1: F2, 10: F8, 100: F32, 1000: F128 }
+  sweep:        [F2, F4, F8, F16, F32, F64, F128]
+# clickhouse replica MEMORY is pinned out-of-band per scale (Cloud API
+# replicaScaling, min==max, idleScaling off; see docs/ARCHITECTURE.md §7):
+# SF1: 16GB, SF10: 32GB, SF100: 32GB, SF1000: 120GB. The loader allows only
+# one sizing knob per engine, so memory can't be a second knob here.
+# Policy: every query at a scale runs at that ONE size; OOM/timeout failures
+# EJECT as documented DNFs (no per-query size escalation: a scale's stats
+# must come from uniform compute). Concurrency at SF1000 is skipped: the warm
+# pass ejects 30%+ of queries at the 120GB replica ceiling, so concurrency
+# levels would only multiply timeout windows. (scale_skips can't record this:
+# it is whole-scale, and the SF1000 WARM results exist.) DSB warm at SF1000 is
+# also skipped: tpcds establishes the at-ceiling ejection profile (36% DNF at
+# 3x120GB), and dsb's skewed variants of the same schema would re-prove it at
+# hours of timeout-window cost. SF1000 warm = tpcds only. ClickBench (single
+# 100GB dataset): the multi-replica series is the CONCURRENCY axis; the WARM
+# single-replica vertical ladder walks the full sweep below, which answers how
+# far the scan workload moves with per-replica memory. Every rung is
+# hardware-verified: the Cloud API echoes desired replicaScaling state
+# without necessarily replacing the replica (trap 3 in
+# scripts/resize/clickhouse_resize.py), and an unverified rung mislabels every row
+# the pass writes.
+clickhouse:
+  # 100 is designated at 1 replica: 1x32GB at 100 GB carries all 201 queries
+  # (20.4% DNF at the memory ceiling), so the designated cell is a measurement the
+  # report can compare. Replicas do not (by default) pool memory for a single
+  # query, so report/policy.py excludes multi-replica configs from single-session
+  # comparison; a multi-replica designation would resolve to data the report does
+  # not use. SF1000 is designated at 3 replicas: the engine is DNF there (69 of 201
+  # completed) and a single-replica 1 TB pass would not change that.
+  num_replicas: { 1: 1, 10: 1, 100: 1, 1000: 3 }
+  # An exact doubling, 8/16/32/64/120: the same shape every other engine is swept
+  # on (Redshift 8/16/32/64/128 RPU, Snowflake's T-shirt tiers, each step 2x the one
+  # below), so a per-step gain means the same thing across engines. The 24/48/96GB
+  # tiers (1.33-1.5x steps) are left out for that reason. The top is 120GB rather
+  # than 128 because that is the tier verified live via replicaScaling; the final
+  # step is therefore 1.88x, which is a vendor limit rather than a choice.
+  # ClickHouse Cloud provisions 1 vCPU per 4 GiB and bills per 2-vCPU unit, so the
+  # vendor's capacity dial is MEMORY, not replica count (replicas add throughput and
+  # HA; by default they do not pool memory for a single query). The ladder is therefore memory
+  # doublings at ONE replica — the same vertical-sizing axis every other engine is
+  # measured on. The vendor-default 3-replica count is the CONCURRENCY axis
+  # (load_sweep below), where replicas are the knob being measured. Expressed as the
+  # compute_label the runners stamp, since memory cannot be a second knob here.
+  sweep: [1x8GB, 1x16GB, 1x32GB, 1x64GB, 1x120GB]
+  # Under load ClickHouse runs three replicas; memory per replica is the knob.
+  load_sweep: [3x8GB, 3x16GB, 3x24GB, 3x32GB, 3x48GB, 3x64GB, 3x96GB, 3x120GB]
+# SF1000 concurrency covers three sizes each for Fabric (F32/F64/F128) and
+# MotherDuck (Jumbo/Mega/Giga), so the 1 TB frontier is a curve rather than a single
+# dot per engine. Standard/Pulse and F2-F16 are unmeasured at 1 TB by design: at
+# that volume they would spend the ladder waiting on ten-minute timeouts (Jumbo
+# already sheds 78% at 100 sessions).
+# motherduck sweep: the vendor's named Duckling tiers, in the vendor's own order.
+motherduck:
+  tier:  { 1: standard, 10: standard, 100: jumbo, 1000: giga }
+  sweep: [pulse, standard, jumbo, mega, giga]

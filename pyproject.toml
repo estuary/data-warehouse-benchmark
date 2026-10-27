@@ -1,0 +1,108 @@
+[project]
+name = "estuary-corrdyn-2026-data-warehouse-benchmark"
+version = "0.1.0"
+description = "2026 Cloud Data Warehouse Benchmark (CorrDyn / Estuary)"
+requires-python = ">=3.11"
+dependencies = [
+    # Cap below 1.5.4: MotherDuck's loadable extension only supports DuckDB
+    # <=1.5.3 (1.5.4 fails motherduck_duckdb_cpp_init at connect). Do not change
+    # the cap without confirming the maximum supported version of duckdb that
+    # motherduck supports.
+    "duckdb>=1.2.0,<1.5.4",
+    "sqlglot>=26.0.0",
+    "pyarrow>=18.0.0",
+    "numpy>=2.1.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.2",
+    "typer>=0.15.0",
+    "rich>=13.9.0",
+    "anthropic>=0.40.0",
+    "boto3>=1.35.0",
+    "pyyaml>=6.0.0",
+    "requests>=2.31.0",
+    # Engine SDKs (kept in main deps so the registries' lazy imports succeed).
+    "google-cloud-bigquery>=3.27.0",
+    "snowflake-connector-python>=3.12.0",
+    "databricks-sql-connector>=4.2.5",
+    "redshift-connector>=2.1.0",
+    "pyodbc>=5.2.0",
+    "azure-identity>=1.19.0",
+    "clickhouse-connect>=0.8.0",
+    # Charts / report.
+    "plotly>=6.9.0",
+    "kaleido>=1.3.0",
+    "google-cloud-bigquery-reservation>=1.25.0",
+]
+
+[project.scripts]
+benchmark = "benchmark.cli:app"
+settings = "benchmark.cli_settings:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/benchmark"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "SIM",
+    "TCH",
+    "RUF",
+    "T20",
+]
+ignore = [
+    "E501",
+    # TC001/TC003 push runtime imports into `if TYPE_CHECKING:` blocks.
+    # Several of ours (e.g. type[WarehouseConnector] in registry dicts) need
+    # runtime access; the rule fires false positives more than it helps.
+    "TC001",
+    "TC003",
+    # We use ×, α, —, § deliberately in docstrings + comments referencing
+    # spec sections. Disable the ambiguous-unicode warnings.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    # SIM117 / SIM108 / B027 are stylistic; leave them on but allow the few
+    # places we intentionally violate via noqa where needed.
+]
+
+[tool.ruff.lint.per-file-ignores]
+# settings.py fields + computed-field properties are deliberately ALL CAPS
+# so they map 1:1 to env var names (N802 = function/property name lowercase,
+# N815 = mixedCase class var).
+"src/benchmark/settings.py" = ["N802", "N815"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["benchmark"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
+markers = [
+    "integration: end-to-end tests that build data and run against a local DuckDB (opt-in via --run-integration)",
+    "slow: long-running (e.g. full SF1-scale data generation)",
+]
