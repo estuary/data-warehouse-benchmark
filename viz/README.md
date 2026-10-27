@@ -566,6 +566,7 @@ src/site/ladder-caveats.js Hand-written ladder caveats, each held to the data by
 src/site/skips.js          Sizes skipped on purpose, listed from scale_skips.parquet, each reason in reader's words (READER_REASONS)
 src/pages/*.js       One module per page (index, fit, engine, compare, queries, method), each exporting `mount({ signal })`
 public/sw.js         Offline cache (no build step; must stay dependency-free)
+public/robots.txt    Keeps search engines out of /preview/; the published pages are open to them
 scripts/og-image.mjs       Renders the link-preview card, public/og-image.png, from the header logos and Inter
 scripts/prepare-data.mjs   Stages parquet + wasm into public/, checks the extension matches the module's DuckDB version and the exports match export-schema.json
 scripts/export-schema.json The columns and types of every export, as the explorer reads them (`npm run data -- --write-schema` records them)
@@ -575,7 +576,7 @@ tests/wait.js              Waits the specs share, in place of sleeps: settled (n
 tests/site.spec.js         Every page clean and on-origin, switching pages in place (one DuckDB start, back and forward, offline), the Overview and Method figures, sizing and scan views, downloads, glossary, phone widths, the copy's claims (scan ceiling, entry tiers, skew, agreement, no dead report link) and phone tables and touch
 tests/{fit,engine,queries}.spec.js   One suite per page, each checked against SQL over the same parquet
 tests/a11y.spec.js         Every page: no text under 12 px, no sideways scroll at 320 px; named menus; Escape closes a definition
-tests/meta.spec.js         Every page's canonical address and link-preview tags name the published site; the preview card ships at its declared size
+tests/meta.spec.js         Every page's canonical address and link-preview tags name the published site; the preview card ships at its declared size; pages indexable, /preview/ not
 scripts/smoke.mjs          Post-deploy check of the published URL, run by the workflow
 src/url-state.js     Controls in the URL hash, both directions
 playwright.config.js       Serves dist/ on :4173 for the suite (VIZ_OUT_DIR / VIZ_PORT override both)
@@ -645,9 +646,9 @@ workflow" on the Explorer workflow, choosing the branch; that run tests and
 never deploys. On a push to `main` or to a `preview/*` branch the workflow
 builds, publishes to GitHub Pages and smoke-tests the published URLs
 (`scripts/smoke.mjs`: the Compare page must reach its ready marker and draw a
-frontier, with retries for CDN lag). Every page carries a `noindex, nofollow`
-robots tag, so search engines do not list the Pages site; delete that tag (one
-line near the top of each HTML file) to allow indexing.
+frontier, with retries for CDN lag). Search engines may index the published
+pages; `public/robots.txt` keeps them out of `/preview/`, and every page names
+its canonical address on the published site (below).
 
 At build, `vite.config.js` writes each page's canonical address and its link
 preview (Open Graph and Twitter card tags) into the HTML, from the page's own
