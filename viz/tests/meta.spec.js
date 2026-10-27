@@ -1,7 +1,8 @@
 /**
  * What other sites see of a page before any script runs: its canonical
  * address and its link preview, added at build by vite.config.js from the
- * page's own title and description, and the preview card itself.
+ * page's own title and description, the preview card itself, and what search
+ * engines may index.
  */
 import { expect, test } from '@playwright/test';
 import { PREVIEW_IMAGE, SITE_URL, pageUrl } from '../src/site/published.js';
@@ -29,6 +30,16 @@ for (const page of PAGES) {
     expect(attr(html, 'twitter:card')).toBe('summary_large_image');
   });
 }
+
+test('search engines may index the pages, but not the review previews', async ({ request }) => {
+  for (const page of PAGES) {
+    const html = await (await request.get(`${page}.html`)).text();
+    expect(html, `${page}.html`).not.toMatch(/<meta name="robots"/);
+  }
+  const robots = await (await request.get('robots.txt')).text();
+  expect(robots).toMatch(/^User-agent: \*$/m);
+  expect(robots).toMatch(/^Disallow: \/preview\/$/m);
+});
 
 test('the preview card ships with the build at the size the tags declare', async ({ request }) => {
   const res = await request.get(PREVIEW_IMAGE.path);

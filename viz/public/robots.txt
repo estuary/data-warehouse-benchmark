@@ -1,0 +1,5 @@
+# The published pages are open to search engines. Review previews, which the
+# Explorer workflow builds under /preview/ from the latest preview/* branch,
+# are not.
+User-agent: *
+Disallow: /preview/
