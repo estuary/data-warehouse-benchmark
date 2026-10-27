@@ -1,0 +1,59 @@
+/* Find your warehouse: the input form, presets and result tables. */
+/* Scoped to its page: the site is one document whose pages swap in place
+   (src/site/router.js), so every stylesheet is loaded on every page.
+   :where() adds no specificity, so each rule weighs as it would unscoped. */
+:where(.page-fit) {
+  .fit-questions { max-width: 88ch; padding-left: 20px; color: var(--muted); }
+  .fit-questions li { margin-bottom: 6px; }
+  .fit-questions b { color: var(--ink); }
+
+  .fit-preset {
+    display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer;
+    font: inherit; font-size: 0.875rem; color: var(--muted); line-height: 1.45;
+    padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff;
+  }
+  .fit-preset b { color: var(--ink); font-size: 0.9375rem; }
+  .fit-preset:hover { border-color: var(--accent); }
+  /* The example the form still holds: marked until any input changes (fit.js activePreset). */
+  .fit-preset[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+  .fit-preset[aria-pressed="true"] b::after { content: "Selected"; margin-left: 8px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+  .fit-preset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .fit-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 18px 28px; }
+  .fit-field-wide { grid-column: 1 / -1; }
+  .fit-label { margin: 0 0 6px; font-weight: 600; font-size: 0.9375rem; }
+  .fit-label small { font-weight: 400; color: var(--muted); }
+  .fit-hint { margin: 6px 0 0; font-size: 0.8125rem; color: var(--muted); }
+  .fit-hint:empty { display: none; }
+  .choice small { font-size: 0.8125rem; color: var(--faint); font-weight: 400; margin-left: 4px; }
+  .choice[aria-pressed="true"] small { color: var(--accent); }
+  .choice:disabled { opacity: 0.45; cursor: not-allowed; }
+  .fit-sla { display: flex; align-items: center; gap: 10px; }
+  .fit-sla input { width: min(260px, 70vw); accent-color: var(--accent); }
+  .fit-sla output { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .fit-inline input { font: inherit; width: 7em; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; }
+  .fit-helper { margin-top: 8px; }
+  .fit-helper > summary { cursor: pointer; font-size: 0.875rem; color: var(--accent); width: fit-content; padding: 6px 0; }
+  .fit-helper-body { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 14px; margin-top: 8px; font-size: 0.875rem; color: var(--muted); }
+  .fit-helper-body label { display: flex; flex-direction: column; gap: 3px; }
+  .fit-helper-body input { font: inherit; width: 8em; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; }
+  .fit-helper-body .fit-hint { flex-basis: 100%; }
+  .fit-flash { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 6px; transition: outline-color 0.4s; }
+
+  .fit-table td small, .fit-speed-table td small { color: var(--faint); }
+  /* A note on hover or focus, so a target: 24 px tall at least (WCAG 2.5.8). */
+  .fit-idle { display: inline-flex; align-items: center; min-height: 24px; font-size: 0.8125rem; white-space: nowrap; cursor: help; text-decoration: underline dotted var(--faint); text-underline-offset: 3px; }
+  .fit-idle.bills { color: #8a5300; }
+  .fit-toggle { margin-top: 10px; font-size: 0.875rem; }
+  .fit-none p { margin: 0 0 8px; }
+  .fit-none ul { margin: 0 0 8px; padding-left: 20px; }
+  .fit-caveat-h { margin: 12px 0 4px; font-size: 0.875rem; color: var(--muted); }
+  .fit-caveats { margin: 0; padding-left: 20px; font-size: 0.875rem; color: var(--muted); max-width: 95ch; }
+  .fit-caveats li { margin-bottom: 4px; }
+  .fit-sub { margin: 10px 0 6px; font-weight: 600; font-size: 0.9375rem; }
+  .fit-speed-table .muted { color: var(--faint); }
+  /* Two column pairs (assigned size, cheapest size that served the load): a rule between them keeps them apart. */
+  .fit-speed-table .grp-start { border-left: 1px solid var(--line); }
+  .fit-speed-table th.grp { color: var(--ink); white-space: normal; }
+  .fit-next { margin: 20px 0 0; color: var(--muted); font-size: 0.9375rem; }
+}

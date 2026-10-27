@@ -1,0 +1,12 @@
+node_modules/
+dist/
+
+# Staged by scripts/prepare-data.mjs from results/exports and node_modules.
+# public/data/ is a copy of results/exports (tracked at the repo root), so it
+# stays ignored. public/duckdb/ is tracked: the wasm module is committed via
+# Git LFS so a clone can build and serve the app without a CDN.
+public/data/
+
+# Playwright output.
+test-results/
+playwright-report/

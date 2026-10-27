@@ -1,0 +1,1654 @@
+# Estuary materialization: TPC-DS + DSB (SF1–SF1000) + ClickBench -> Snowflake BENCHMARK_DB.
+#
+# 15 materialization blocks: TPC-DS and DSB each at SF1/SF10/SF100/SF1000, plus
+# per-suite SF1000 fact splits (below), plus ClickBench (single scale). Snowflake
+# has a database→schema hierarchy (unlike ClickHouse), so all write into the single
+# BENCHMARK_DB database and split by schema; scale is the schema suffix:
+#   snowflake-tpcds-sf<N>  — 24 TPC-DS tables -> schema TPCDS_SF<N> (uniform data)
+#   snowflake-dsb-sf<N>    — 24 DSB tables    -> schema DSB_SF<N>   (skewed-distribution data)
+#   snowflake-clickbench   — 1 hits table     -> schema CLICKBENCH  (web analytics)
+#
+# At SF1000 the four fact tables are split into dedicated mats
+# (snowflake-<suite>-store-sales-sf1000, -catalog-sales-, -web-inventory-) writing
+# into the same <SUITE>_SF1000 schema: one Estuary task is one sequential pipeline,
+# so dedicated tasks parallelize the big fact backfills.
+#
+# Schemas, warehouses, the BENCHMARK_ROLE, and the service user are all
+# provisioned by terraform (terraform/modules/snowflake). The connector loads
+# into Estuary-owned tables, which the benchmark queries as loaded (no
+# physical design).
+#
+# Connector: materialize-snowflake. Auth is JWT key-pair (TYPE = SERVICE users
+# can't password-auth). The privateKey is the full PKCS#8 PEM, inlined from the
+# SNOWFLAKE_BENCHMARK_PRIVATE_KEY computed property (reads the .p8 file at
+# SNOWFLAKE_BENCHMARK_PRIVATE_KEY_FILE). `benchmark flow-publish` re-indents the
+# multi-line PEM under the `|` block scalar at substitution time.
+#
+# Apply with:
+#   uv run benchmark flow-auth
+#   uv run benchmark flow-publish snowflake
+#
+# Env vars expected (resolved by `benchmark flow-publish` from env/<section>.env):
+#   ESTUARY_ACCOUNT,
+#   SNOWFLAKE_ACCOUNT,
+#   SNOWFLAKE_BENCHMARK_USER,
+#   SNOWFLAKE_BENCHMARK_PRIVATE_KEY  (computed from SNOWFLAKE_BENCHMARK_PRIVATE_KEY_FILE)
+
+materializations:
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-tpcds-sf1:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: TPCDS_SF1
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/call_center
+        resource: { table: CALL_CENTER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/catalog_page
+        resource: { table: CATALOG_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/catalog_returns
+        resource: { table: CATALOG_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/catalog_sales
+        resource: { table: CATALOG_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/customer
+        resource: { table: CUSTOMER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/customer_address
+        resource: { table: CUSTOMER_ADDRESS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/customer_demographics
+        resource: { table: CUSTOMER_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/date_dim
+        resource: { table: DATE_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/household_demographics
+        resource: { table: HOUSEHOLD_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/income_band
+        resource: { table: INCOME_BAND, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/inventory
+        resource: { table: INVENTORY, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/item
+        resource: { table: ITEM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/promotion
+        resource: { table: PROMOTION, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/reason
+        resource: { table: REASON, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/ship_mode
+        resource: { table: SHIP_MODE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/store
+        resource: { table: STORE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/store_returns
+        resource: { table: STORE_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/store_sales
+        resource: { table: STORE_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/time_dim
+        resource: { table: TIME_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/warehouse
+        resource: { table: WAREHOUSE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_page
+        resource: { table: WEB_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_returns
+        resource: { table: WEB_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_sales
+        resource: { table: WEB_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_site
+        resource: { table: WEB_SITE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-dsb-sf1:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: DSB_SF1
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/call_center
+        resource: { table: CALL_CENTER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/catalog_page
+        resource: { table: CATALOG_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/catalog_returns
+        resource: { table: CATALOG_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/catalog_sales
+        resource: { table: CATALOG_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/customer
+        resource: { table: CUSTOMER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/customer_address
+        resource: { table: CUSTOMER_ADDRESS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/customer_demographics
+        resource: { table: CUSTOMER_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/date_dim
+        resource: { table: DATE_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/household_demographics
+        resource: { table: HOUSEHOLD_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/income_band
+        resource: { table: INCOME_BAND, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/inventory
+        resource: { table: INVENTORY, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/item
+        resource: { table: ITEM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/promotion
+        resource: { table: PROMOTION, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/reason
+        resource: { table: REASON, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/ship_mode
+        resource: { table: SHIP_MODE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/store
+        resource: { table: STORE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/store_returns
+        resource: { table: STORE_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/store_sales
+        resource: { table: STORE_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/time_dim
+        resource: { table: TIME_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/warehouse
+        resource: { table: WAREHOUSE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_page
+        resource: { table: WEB_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_returns
+        resource: { table: WEB_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_sales
+        resource: { table: WEB_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_site
+        resource: { table: WEB_SITE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-clickbench:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: CLICKBENCH
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/clickbench/hits
+        resource: { table: HITS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-tpcds-sf10:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: TPCDS_SF10
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/call_center
+        resource: { table: CALL_CENTER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/catalog_page
+        resource: { table: CATALOG_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/catalog_returns
+        resource: { table: CATALOG_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/catalog_sales
+        resource: { table: CATALOG_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/customer
+        resource: { table: CUSTOMER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/customer_address
+        resource: { table: CUSTOMER_ADDRESS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/customer_demographics
+        resource: { table: CUSTOMER_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/date_dim
+        resource: { table: DATE_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/household_demographics
+        resource: { table: HOUSEHOLD_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/income_band
+        resource: { table: INCOME_BAND, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/inventory
+        resource: { table: INVENTORY, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/item
+        resource: { table: ITEM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/promotion
+        resource: { table: PROMOTION, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/reason
+        resource: { table: REASON, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/ship_mode
+        resource: { table: SHIP_MODE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/store
+        resource: { table: STORE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/store_returns
+        resource: { table: STORE_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/store_sales
+        resource: { table: STORE_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/time_dim
+        resource: { table: TIME_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/warehouse
+        resource: { table: WAREHOUSE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_page
+        resource: { table: WEB_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_returns
+        resource: { table: WEB_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_sales
+        resource: { table: WEB_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_site
+        resource: { table: WEB_SITE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-dsb-sf10:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: DSB_SF10
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/call_center
+        resource: { table: CALL_CENTER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/catalog_page
+        resource: { table: CATALOG_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/catalog_returns
+        resource: { table: CATALOG_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/catalog_sales
+        resource: { table: CATALOG_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/customer
+        resource: { table: CUSTOMER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/customer_address
+        resource: { table: CUSTOMER_ADDRESS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/customer_demographics
+        resource: { table: CUSTOMER_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/date_dim
+        resource: { table: DATE_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/household_demographics
+        resource: { table: HOUSEHOLD_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/income_band
+        resource: { table: INCOME_BAND, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/inventory
+        resource: { table: INVENTORY, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/item
+        resource: { table: ITEM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/promotion
+        resource: { table: PROMOTION, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/reason
+        resource: { table: REASON, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/ship_mode
+        resource: { table: SHIP_MODE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/store
+        resource: { table: STORE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/store_returns
+        resource: { table: STORE_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/store_sales
+        resource: { table: STORE_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/time_dim
+        resource: { table: TIME_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/warehouse
+        resource: { table: WAREHOUSE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_page
+        resource: { table: WEB_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_returns
+        resource: { table: WEB_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_sales
+        resource: { table: WEB_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_site
+        resource: { table: WEB_SITE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-tpcds-sf100:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: TPCDS_SF100
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/call_center
+        resource: { table: CALL_CENTER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/catalog_page
+        resource: { table: CATALOG_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/catalog_returns
+        resource: { table: CATALOG_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/catalog_sales
+        resource: { table: CATALOG_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/customer
+        resource: { table: CUSTOMER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/customer_address
+        resource: { table: CUSTOMER_ADDRESS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/customer_demographics
+        resource: { table: CUSTOMER_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/date_dim
+        resource: { table: DATE_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/household_demographics
+        resource: { table: HOUSEHOLD_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/income_band
+        resource: { table: INCOME_BAND, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/inventory
+        resource: { table: INVENTORY, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/item
+        resource: { table: ITEM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/promotion
+        resource: { table: PROMOTION, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/reason
+        resource: { table: REASON, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/ship_mode
+        resource: { table: SHIP_MODE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/store
+        resource: { table: STORE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/store_returns
+        resource: { table: STORE_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/store_sales
+        resource: { table: STORE_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/time_dim
+        resource: { table: TIME_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/warehouse
+        resource: { table: WAREHOUSE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_page
+        resource: { table: WEB_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_returns
+        resource: { table: WEB_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_sales
+        resource: { table: WEB_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_site
+        resource: { table: WEB_SITE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-dsb-sf100:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: DSB_SF100
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/call_center
+        resource: { table: CALL_CENTER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/catalog_page
+        resource: { table: CATALOG_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/catalog_returns
+        resource: { table: CATALOG_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/catalog_sales
+        resource: { table: CATALOG_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/customer
+        resource: { table: CUSTOMER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/customer_address
+        resource: { table: CUSTOMER_ADDRESS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/customer_demographics
+        resource: { table: CUSTOMER_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/date_dim
+        resource: { table: DATE_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/household_demographics
+        resource: { table: HOUSEHOLD_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/income_band
+        resource: { table: INCOME_BAND, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/inventory
+        resource: { table: INVENTORY, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/item
+        resource: { table: ITEM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/promotion
+        resource: { table: PROMOTION, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/reason
+        resource: { table: REASON, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/ship_mode
+        resource: { table: SHIP_MODE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/store
+        resource: { table: STORE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/store_returns
+        resource: { table: STORE_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/store_sales
+        resource: { table: STORE_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/time_dim
+        resource: { table: TIME_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/warehouse
+        resource: { table: WAREHOUSE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_page
+        resource: { table: WEB_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_returns
+        resource: { table: WEB_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_sales
+        resource: { table: WEB_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_site
+        resource: { table: WEB_SITE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-tpcds-sf1000:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: TPCDS_SF1000
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/call_center
+        resource: { table: CALL_CENTER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/catalog_page
+        resource: { table: CATALOG_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/catalog_returns
+        resource: { table: CATALOG_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/customer
+        resource: { table: CUSTOMER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/customer_address
+        resource: { table: CUSTOMER_ADDRESS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/customer_demographics
+        resource: { table: CUSTOMER_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/date_dim
+        resource: { table: DATE_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/household_demographics
+        resource: { table: HOUSEHOLD_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/income_band
+        resource: { table: INCOME_BAND, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/item
+        resource: { table: ITEM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/promotion
+        resource: { table: PROMOTION, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/reason
+        resource: { table: REASON, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/ship_mode
+        resource: { table: SHIP_MODE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/store
+        resource: { table: STORE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/store_returns
+        resource: { table: STORE_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/time_dim
+        resource: { table: TIME_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/warehouse
+        resource: { table: WAREHOUSE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_page
+        resource: { table: WEB_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_returns
+        resource: { table: WEB_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_site
+        resource: { table: WEB_SITE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-tpcds-store-sales-sf1000:
+    # Split out of snowflake-tpcds-sf1000: one Estuary task =
+    # one sequential pipeline; dedicated tasks parallelize the fact backfill.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: TPCDS_SF1000
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/store_sales
+        resource: { table: STORE_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-tpcds-catalog-sales-sf1000:
+    # Split out of snowflake-tpcds-sf1000: one Estuary task =
+    # one sequential pipeline; dedicated tasks parallelize the fact backfill.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: TPCDS_SF1000
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/catalog_sales
+        resource: { table: CATALOG_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-tpcds-web-inventory-sf1000:
+    # Split out of snowflake-tpcds-sf1000: one Estuary task =
+    # one sequential pipeline; dedicated tasks parallelize the fact backfill.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: TPCDS_SF1000
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_sales
+        resource: { table: WEB_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/inventory
+        resource: { table: INVENTORY, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-dsb-sf1000:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: DSB_SF1000
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/call_center
+        resource: { table: CALL_CENTER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/catalog_page
+        resource: { table: CATALOG_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/catalog_returns
+        resource: { table: CATALOG_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/customer
+        resource: { table: CUSTOMER, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/customer_address
+        resource: { table: CUSTOMER_ADDRESS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/customer_demographics
+        resource: { table: CUSTOMER_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/date_dim
+        resource: { table: DATE_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/household_demographics
+        resource: { table: HOUSEHOLD_DEMOGRAPHICS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/income_band
+        resource: { table: INCOME_BAND, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/item
+        resource: { table: ITEM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/promotion
+        resource: { table: PROMOTION, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/reason
+        resource: { table: REASON, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/ship_mode
+        resource: { table: SHIP_MODE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/store
+        resource: { table: STORE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/store_returns
+        resource: { table: STORE_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/time_dim
+        resource: { table: TIME_DIM, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/warehouse
+        resource: { table: WAREHOUSE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_page
+        resource: { table: WEB_PAGE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_returns
+        resource: { table: WEB_RETURNS, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_site
+        resource: { table: WEB_SITE, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-dsb-store-sales-sf1000:
+    # Split out of snowflake-dsb-sf1000: one Estuary task =
+    # one sequential pipeline; dedicated tasks parallelize the fact backfill.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: DSB_SF1000
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/store_sales
+        resource: { table: STORE_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-dsb-catalog-sales-sf1000:
+    # Split out of snowflake-dsb-sf1000: one Estuary task =
+    # one sequential pipeline; dedicated tasks parallelize the fact backfill.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: DSB_SF1000
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/catalog_sales
+        resource: { table: CATALOG_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/snowflake-dsb-web-inventory-sf1000:
+    # Split out of snowflake-dsb-sf1000: one Estuary task =
+    # one sequential pipeline; dedicated tasks parallelize the fact backfill.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-snowflake:v4
+        config:
+          host: ${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com
+          account: ${SNOWFLAKE_ACCOUNT}
+          credentials:
+            auth_type: jwt
+            user: ${SNOWFLAKE_BENCHMARK_USER}
+            private_key: |
+              ${SNOWFLAKE_BENCHMARK_PRIVATE_KEY}
+          database: BENCHMARK_DB
+          schema: DSB_SF1000
+          # XLARGE: load throughput is warehouse-bound; materialization rounds
+          # drain ~4x faster than on MEDIUM and the warehouse auto-suspends
+          # between loads, so the idle cost is unchanged.
+          warehouse: BENCHMARK_WH_XLARGE
+          role: BENCHMARK_ROLE
+          # NTZ (no timezone) mirrors DuckDB's timezone-less TIMESTAMP, so
+          # loaded values match the ground-truth hashes without session-TZ
+          # conversion. Required field in materialize-snowflake v4.
+          timestamp_type: "TIMESTAMP_NTZ (discard TZ)"
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_sales
+        resource: { table: WEB_SALES, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/inventory
+        resource: { table: INVENTORY, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]

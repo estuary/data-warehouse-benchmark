@@ -1,0 +1,358 @@
+# Estuary capture: ALL benchmark Parquet (TPC-DS + DSB + ClickBench) from S3.
+#
+# One source-s3:v2 connector at the bucket level, 145 file-level bindings
+# (TPC-DS + DSB across SF1-SF100, plus ClickBench). SF1000 is ingested by the
+# split captures in source-s3-sf1000.flow.yaml (never add those bindings
+# here). Each binding emits one Flow collection per parquet file so the
+# materializer downstream can write the native tables in MotherDuck (no
+# view-splitting).
+#
+# Apply with:
+#   uv run benchmark flow-publish source-s3
+#
+# The collection target names are stable; the materializations bind to them
+# (N = 1, 10, 100 here; the sf1000 collections come from the split captures):
+#   ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf<N>/<table>    (24 per scale)
+#   ${ESTUARY_ACCOUNT}/benchmark/dsb/sf<N>/<table>      (24 per scale)
+#   ${ESTUARY_ACCOUNT}/benchmark/clickbench/hits        (1)
+#
+# Env vars expected (resolved by `benchmark flow-publish` from env/<section>.env):
+#   ESTUARY_ACCOUNT, BENCHMARK_S3_BUCKET, AWS_REGION,
+#   ESTUARY_S3_AWS_ACCESS_KEY_ID, ESTUARY_S3_AWS_SECRET_ACCESS_KEY
+
+captures:
+  ${ESTUARY_ACCOUNT}/benchmark/captures/source-s3:
+    # runtime-v2 on the production data plane. Roll publishes out per engine
+    # via scoped re-backfill validation (see docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+      # ── TPC-DS SF1 (24 tables) ────────────────────────────────────────────
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/call_center.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/call_center
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/catalog_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/catalog_page
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/catalog_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/catalog_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/catalog_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/catalog_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/customer.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/customer
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/customer_address.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/customer_address
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/customer_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/customer_demographics
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/date_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/date_dim
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/household_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/household_demographics
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/income_band.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/income_band
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/inventory.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/inventory
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/item.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/item
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/promotion.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/promotion
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/reason.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/reason
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/ship_mode.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/ship_mode
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/store.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/store
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/store_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/store_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/store_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/store_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/time_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/time_dim
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/warehouse.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/warehouse
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/web_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_page
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/web_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/web_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1/web_site.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_site
+
+      # ── DSB SF1 (24 tables, skewed distributions) ────────────────────────
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/call_center.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/call_center
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/catalog_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/catalog_page
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/catalog_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/catalog_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/catalog_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/catalog_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/customer.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/customer
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/customer_address.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/customer_address
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/customer_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/customer_demographics
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/date_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/date_dim
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/household_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/household_demographics
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/income_band.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/income_band
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/inventory.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/inventory
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/item.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/item
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/promotion.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/promotion
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/reason.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/reason
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/ship_mode.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/ship_mode
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/store.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/store
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/store_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/store_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/store_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/store_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/time_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/time_dim
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/warehouse.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/warehouse
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/web_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_page
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/web_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/web_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1/web_site.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_site
+
+
+
+      # ── TPC-DS SF100 (24 tables) ────────────────────────────────────────────
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/call_center.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/call_center
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/catalog_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/catalog_page
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/catalog_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/catalog_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/catalog_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/catalog_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/customer.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/customer
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/customer_address.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/customer_address
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/customer_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/customer_demographics
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/date_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/date_dim
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/household_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/household_demographics
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/income_band.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/income_band
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/inventory.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/inventory
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/item.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/item
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/promotion.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/promotion
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/reason.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/reason
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/ship_mode.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/ship_mode
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/store.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/store
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/store_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/store_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/store_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/store_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/time_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/time_dim
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/warehouse.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/warehouse
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/web_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_page
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/web_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/web_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf100/web_site.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_site
+
+      # ── DSB SF100 (24 tables, skewed distributions) ────────────────────────
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/call_center.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/call_center
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/catalog_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/catalog_page
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/catalog_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/catalog_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/catalog_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/catalog_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/customer.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/customer
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/customer_address.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/customer_address
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/customer_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/customer_demographics
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/date_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/date_dim
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/household_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/household_demographics
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/income_band.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/income_band
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/inventory.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/inventory
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/item.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/item
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/promotion.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/promotion
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/reason.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/reason
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/ship_mode.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/ship_mode
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/store.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/store
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/store_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/store_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/store_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/store_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/time_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/time_dim
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/warehouse.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/warehouse
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/web_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_page
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/web_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/web_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf100/web_site.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_site
+
+      # ── TPC-DS SF10 (24 tables) ────────────────────────────────────────────
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/call_center.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/call_center
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/catalog_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/catalog_page
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/catalog_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/catalog_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/catalog_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/catalog_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/customer.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/customer
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/customer_address.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/customer_address
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/customer_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/customer_demographics
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/date_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/date_dim
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/household_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/household_demographics
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/income_band.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/income_band
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/inventory.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/inventory
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/item.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/item
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/promotion.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/promotion
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/reason.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/reason
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/ship_mode.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/ship_mode
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/store.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/store
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/store_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/store_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/store_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/store_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/time_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/time_dim
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/warehouse.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/warehouse
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/web_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_page
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/web_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/web_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf10/web_site.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_site
+
+      # ── DSB SF10 (24 tables, skewed distributions) ────────────────────────
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/call_center.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/call_center
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/catalog_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/catalog_page
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/catalog_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/catalog_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/catalog_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/catalog_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/customer.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/customer
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/customer_address.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/customer_address
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/customer_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/customer_demographics
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/date_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/date_dim
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/household_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/household_demographics
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/income_band.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/income_band
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/inventory.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/inventory
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/item.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/item
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/promotion.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/promotion
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/reason.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/reason
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/ship_mode.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/ship_mode
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/store.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/store
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/store_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/store_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/store_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/store_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/time_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/time_dim
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/warehouse.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/warehouse
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/web_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_page
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/web_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_returns
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/web_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_sales
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf10/web_site.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_site
+
+      # ── ClickBench (1 table) ─────────────────────────────────────────────
+      # The parquet at this path is the DERIVED typed file (produced by
+      # `benchmark derive-clickbench-typed` from hits.parquet.raw). EventDate
+      # is Date32, the 3 *EventTime columns are RFC 3339 strings. The
+      # collection schema (including format hints for the 4 temporal
+      # columns) is auto-injected by `staging/estuary.py:_inject_capture_collections`
+      # via `datagen/collection_schemas.py:build_collection_schemas`.
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/clickbench/hits.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/clickbench/hits
+        # backfill bumped to re-read the full file: runtime v2 can drop the
+        # last rows of the final row group at EOF, and a re-read recovers them.
+        backfill: 1

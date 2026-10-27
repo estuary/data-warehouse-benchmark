@@ -1,0 +1,1039 @@
+{
+  "source": "Azure Cost Management query API (az rest, Microsoft.CostManagement/query, api-version 2023-11-01)",
+  "retrieved": "2026-08-27",
+  "retrieved_by": "az cli",
+  "subscription": "the benchmark's dedicated Azure subscription",
+  "resource": "Microsoft.Fabric/capacities (the benchmark's single Fabric capacity)",
+  "window": "2026-08-05T00:00:00Z to 2026-08-27T23:59:59Z",
+  "note": "ActualCost for the Fabric capacity the benchmark ran on. total_by_meter is the window's itemization (USD + usage quantity in CU-hours; every CU meter resolves to $0.18/CU-hour); daily_cu_by_meter splits the two compute meters per UTC day. Cited by Part V's 'What we cannot price, and why' Fabric passage.",
+  "total_usd": 1048.17,
+  "total_by_meter": [
+    {
+      "meter": "Compute Pool Capacity Usage CU",
+      "usd": 856.042,
+      "cu_hours": 4755.789
+    },
+    {
+      "meter": "Data Warehouse Capacity Usage CU",
+      "usd": 169.133,
+      "cu_hours": 939.625
+    },
+    {
+      "meter": "OneLake ops CU (6 meters)",
+      "usd": 7.081,
+      "cu_hours": 39.391
+    },
+    {
+      "meter": "SQL database in Microsoft Fabric Capacity Usage CU",
+      "usd": 0.178,
+      "cu_hours": 0.991
+    },
+    {
+      "meter": "OneLake Storage Hot Data Stored",
+      "usd": 15.714,
+      "unit": "GB-month-ish"
+    },
+    {
+      "meter": "SQL Storage Data Stored",
+      "usd": 0.011
+    }
+  ],
+  "daily_cu_by_meter": [
+    [
+      2.00288313723463,
+      20260805,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0174243016975308,
+      20260805,
+      "Data Warehouse Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000430337962962963,
+      20260805,
+      "OneLake Iterative Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000228904320987654,
+      20260805,
+      "OneLake Other Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      5.2e-05,
+      20260805,
+      "OneLake Other Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000247320987654321,
+      20260805,
+      "OneLake Read Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      2.60802469136e-07,
+      20260805,
+      "OneLake Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000884,
+      20260805,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.00281915277777777,
+      20260805,
+      "OneLake Write Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000709806712962964,
+      20260805,
+      "OneLake Write Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000168010752688172,
+      20260805,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      0.991169221947472,
+      20260805,
+      "SQL database in Microsoft Fabric Capacity Usage CU",
+      "USD"
+    ],
+    [
+      161.945178022762,
+      20260806,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      26.2949411111111,
+      20260806,
+      "Data Warehouse Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.10425627199074,
+      20260806,
+      "OneLake Iterative Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0971477962962964,
+      20260806,
+      "OneLake Other Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0105440833333334,
+      20260806,
+      "OneLake Other Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.152363049382715,
+      20260806,
+      "OneLake Read Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      1.9961419753087e-05,
+      20260806,
+      "OneLake Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      5.314736,
+      20260806,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      3.05835952199074,
+      20260806,
+      "OneLake Write Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.337190181712962,
+      20260806,
+      "OneLake Write Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260806,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      160.630316284336,
+      20260807,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      26.6679968557099,
+      20260807,
+      "Data Warehouse Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.106848336805555,
+      20260807,
+      "OneLake Iterative Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.101925296296296,
+      20260807,
+      "OneLake Other Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00664091358024695,
+      20260807,
+      "OneLake Other Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0624624922839503,
+      20260807,
+      "OneLake Read Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      8.02469135802e-07,
+      20260807,
+      "OneLake Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      13.530138,
+      20260807,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      3.8823720335648,
+      20260807,
+      "OneLake Write Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.541436984953703,
+      20260807,
+      "OneLake Write Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260807,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      157.661383639911,
+      20260808,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      30.7445348567708,
+      20260808,
+      "Data Warehouse Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0891373262731479,
+      20260808,
+      "OneLake Iterative Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0730421701388886,
+      20260808,
+      "OneLake Other Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00401979459876545,
+      20260808,
+      "OneLake Other Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0277471217592591,
+      20260808,
+      "OneLake Read Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      3.0422608024692e-05,
+      20260808,
+      "OneLake Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      18.293452,
+      20260808,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      2.96773847071759,
+      20260808,
+      "OneLake Write Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.432366197222222,
+      20260808,
+      "OneLake Write Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260808,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      149.542819484182,
+      20260809,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      38.9550530594136,
+      20260809,
+      "Data Warehouse Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.107227234953703,
+      20260809,
+      "OneLake Iterative Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0715021064814814,
+      20260809,
+      "OneLake Other Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00415602777777779,
+      20260809,
+      "OneLake Other Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.025874273148148,
+      20260809,
+      "OneLake Read Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      3.2158950617285e-05,
+      20260809,
+      "OneLake Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      26.374572,
+      20260809,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      2.92861670370371,
+      20260809,
+      "OneLake Write Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.364718951388888,
+      20260809,
+      "OneLake Write Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260809,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      149.703145859182,
+      20260810,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      38.9987881385031,
+      20260810,
+      "Data Warehouse Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0566713067129631,
+      20260810,
+      "OneLake Iterative Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0718714629629627,
+      20260810,
+      "OneLake Other Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00398042746913581,
+      20260810,
+      "OneLake Other Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0259570277777776,
+      20260810,
+      "OneLake Read Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      2.8507716049383e-05,
+      20260810,
+      "OneLake Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      32.432678,
+      20260810,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      2.85661288194444,
+      20260810,
+      "OneLake Write Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.28294438773148,
+      20260810,
+      "OneLake Write Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260810,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      165.919410865355,
+      20260811,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      24.2794993634259,
+      20260811,
+      "Data Warehouse Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0451930138888892,
+      20260811,
+      "OneLake Iterative Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0435287345679011,
+      20260811,
+      "OneLake Other Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00242401851851852,
+      20260811,
+      "OneLake Other Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0222562006172839,
+      20260811,
+      "OneLake Read Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000414515432098776,
+      20260811,
+      "OneLake Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.609707,
+      20260811,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      1.38389819791667,
+      20260811,
+      "OneLake Write Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.303375090277777,
+      20260811,
+      "OneLake Write Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260811,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      189.183827136574,
+      20260812,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      2.65440836226852,
+      20260812,
+      "Data Warehouse Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00490873842592593,
+      20260812,
+      "OneLake Iterative Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00616101697530865,
+      20260812,
+      "OneLake Other Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000389518518518519,
+      20260812,
+      "OneLake Other Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0249646342592592,
+      20260812,
+      "OneLake Read Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000132006172839509,
+      20260812,
+      "OneLake Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.765208,
+      20260812,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.077378341435185,
+      20260812,
+      "OneLake Write Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0478302453703704,
+      20260812,
+      "OneLake Write Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260812,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      192.0,
+      20260813,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.765083,
+      20260813,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260813,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      192.0,
+      20260814,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.765078,
+      20260814,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260814,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      192.0,
+      20260815,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.764998,
+      20260815,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260815,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      192.0,
+      20260816,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.764951,
+      20260816,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260816,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      192.0,
+      20260817,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.764913,
+      20260817,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260817,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      192.0,
+      20260818,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.764877,
+      20260818,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260818,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      192.0,
+      20260819,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.764872,
+      20260819,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260819,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      192.0,
+      20260820,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.764872,
+      20260820,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260820,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      192.0,
+      20260821,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.764872,
+      20260821,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260821,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      192.0,
+      20260822,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.764872,
+      20260822,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260822,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      87.7379226182871,
+      20260823,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      28.2626513291896,
+      20260823,
+      "Data Warehouse Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0327637824329723,
+      20260823,
+      "OneLake Iterative Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0187061880444456,
+      20260823,
+      "OneLake Other Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000298932164715986,
+      20260823,
+      "OneLake Other Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.34341595514751,
+      20260823,
+      "OneLake Read Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000143657602563859,
+      20260823,
+      "OneLake Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.771883,
+      20260823,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.100225414242573,
+      20260823,
+      "OneLake Write Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.10770601177743,
+      20260823,
+      "OneLake Write Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260823,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      661.441157959221,
+      20260824,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      435.913691313364,
+      20260824,
+      "Data Warehouse Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.065789648990639,
+      20260824,
+      "OneLake Iterative Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.143950882248764,
+      20260824,
+      "OneLake Other Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00134703033528402,
+      20260824,
+      "OneLake Other Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      9.1623869632167,
+      20260824,
+      "OneLake Read Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000598000422127509,
+      20260824,
+      "OneLake Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.791654,
+      20260824,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.228628710236594,
+      20260824,
+      "OneLake Write Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.270406267736459,
+      20260824,
+      "OneLake Write Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260824,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      478.249417733661,
+      20260825,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      224.162555403839,
+      20260825,
+      "Data Warehouse Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.047055213599537,
+      20260825,
+      "OneLake Iterative Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.162668644907407,
+      20260825,
+      "OneLake Other Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00105076311728395,
+      20260825,
+      "OneLake Other Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      5.55619557839506,
+      20260825,
+      "OneLake Read Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000511084567901236,
+      20260825,
+      "OneLake Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.842749,
+      20260825,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.266921057928241,
+      20260825,
+      "OneLake Write Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.27489772650463,
+      20260825,
+      "OneLake Write Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260825,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      471.771717957388,
+      20260826,
+      "Compute Pool Capacity Usage CU",
+      "USD"
+    ],
+    [
+      62.6737434899692,
+      20260826,
+      "Data Warehouse Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0121508840856481,
+      20260826,
+      "OneLake Iterative Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0358825217592592,
+      20260826,
+      "OneLake Other Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.000214449845679012,
+      20260826,
+      "OneLake Other Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      1.58948140300926,
+      20260826,
+      "OneLake Read Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      9.8879243827161e-05,
+      20260826,
+      "OneLake Read Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      35.877484,
+      20260826,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.0689508844328704,
+      20260826,
+      "OneLake Write Operations Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.0758389108796296,
+      20260826,
+      "OneLake Write Operations Hot Capacity Usage CU",
+      "USD"
+    ],
+    [
+      0.00201612903225806,
+      20260826,
+      "SQL Storage Data Stored",
+      "USD"
+    ],
+    [
+      14.94964,
+      20260827,
+      "OneLake Storage Hot Data Stored",
+      "USD"
+    ],
+    [
+      0.000756048387096774,
+      20260827,
+      "SQL Storage Data Stored",
+      "USD"
+    ]
+  ],
+  "daily_cu_columns": [
+    "UsageQuantity",
+    "UsageDate",
+    "Meter",
+    "Currency"
+  ]
+}

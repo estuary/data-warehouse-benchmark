@@ -1,0 +1,10 @@
+SELECT
+TOP 10
+  1,
+  URL,
+  COUNT_BIG(*) AS c
+FROM hits
+GROUP BY
+  URL
+ORDER BY
+  c DESC

@@ -1,0 +1,3 @@
+SELECT
+  COUNT_BIG(*)
+FROM hits

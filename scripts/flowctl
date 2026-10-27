@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Wrapper so `flowctl` is available on PATH via mise's _.path = ["./scripts"].
+# Tries mise-managed install first, falls back to system flowctl.
+if command -v mise &>/dev/null; then
+    FLOW="$(mise where github:estuary/flow 2>/dev/null)/flowctl-multiarch"
+    if [[ -x "$FLOW" ]]; then
+        exec "$FLOW" "$@"
+    fi
+fi
+exec flowctl "$@"

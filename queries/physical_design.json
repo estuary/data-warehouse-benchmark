@@ -1,0 +1,240 @@
+{
+  "bigquery": {
+    "clustering": {
+      "catalog_returns": [
+        "cr_returned_date_sk",
+        "cr_item_sk"
+      ],
+      "catalog_sales": [
+        "cs_sold_date_sk",
+        "cs_item_sk"
+      ],
+      "inventory": [
+        "inv_date_sk",
+        "inv_item_sk"
+      ],
+      "store_returns": [
+        "sr_returned_date_sk",
+        "sr_item_sk"
+      ],
+      "store_sales": [
+        "ss_sold_date_sk",
+        "ss_item_sk"
+      ],
+      "web_returns": [
+        "wr_returned_date_sk",
+        "wr_item_sk"
+      ],
+      "web_sales": [
+        "ws_sold_date_sk",
+        "ws_item_sk"
+      ]
+    },
+    "distribution": {},
+    "notes": "TPC-DS surrogate date keys are INT64; PARTITION BY doesn't apply without joining date_dim. CLUSTER BY (date_sk, item_sk) on the seven fact tables. BigQuery cannot ALTER clustering on a populated table \u2014 apply via CREATE OR REPLACE \u2026 CLUSTER BY \u2026",
+    "partitioning": {}
+  },
+  "clickhouse": {
+    "clustering": {
+      "catalog_returns": [
+        "cr_returned_date_sk",
+        "cr_item_sk"
+      ],
+      "catalog_sales": [
+        "cs_sold_date_sk",
+        "cs_item_sk"
+      ],
+      "inventory": [
+        "inv_date_sk",
+        "inv_item_sk"
+      ],
+      "store_returns": [
+        "sr_returned_date_sk",
+        "sr_item_sk"
+      ],
+      "store_sales": [
+        "ss_sold_date_sk",
+        "ss_item_sk"
+      ],
+      "web_returns": [
+        "wr_returned_date_sk",
+        "wr_item_sk"
+      ],
+      "web_sales": [
+        "ws_sold_date_sk",
+        "ws_item_sk"
+      ]
+    },
+    "distribution": {},
+    "notes": "ClickHouse uses an `ORDER BY` clause in CREATE TABLE for primary key indexing; apply step rebuilds tables via ATTACH/DETACH PARTITION + new ORDER BY.",
+    "partitioning": {}
+  },
+  "databricks": {
+    "clustering": {
+      "catalog_returns": [
+        "cr_returned_date_sk",
+        "cr_item_sk"
+      ],
+      "catalog_sales": [
+        "cs_sold_date_sk",
+        "cs_item_sk"
+      ],
+      "inventory": [
+        "inv_date_sk",
+        "inv_item_sk"
+      ],
+      "store_returns": [
+        "sr_returned_date_sk",
+        "sr_item_sk"
+      ],
+      "store_sales": [
+        "ss_sold_date_sk",
+        "ss_item_sk"
+      ],
+      "web_returns": [
+        "wr_returned_date_sk",
+        "wr_item_sk"
+      ],
+      "web_sales": [
+        "ws_sold_date_sk",
+        "ws_item_sk"
+      ]
+    },
+    "distribution": {},
+    "notes": "Liquid Clustering on the seven fact tables. Apply via ALTER TABLE ... CLUSTER BY (date_sk, item_sk); then OPTIMIZE <table> to materialize.",
+    "partitioning": {}
+  },
+  "fabric": {
+    "clustering": {},
+    "distribution": {},
+    "notes": "Fabric DW auto-maintains a CLUSTERED COLUMNSTORE INDEX and auto-statistics; manual cluster/distribution knobs aren't exposed. The one supported manual step is CREATE STATISTICS on the fact-table join/filter columns (date_sk, item_sk) \u2014 modest value since auto-stats is on by default.",
+    "partitioning": {},
+    "statistics": {
+      "catalog_returns": [
+        "cr_returned_date_sk",
+        "cr_item_sk"
+      ],
+      "catalog_sales": [
+        "cs_sold_date_sk",
+        "cs_item_sk"
+      ],
+      "inventory": [
+        "inv_date_sk",
+        "inv_item_sk"
+      ],
+      "store_returns": [
+        "sr_returned_date_sk",
+        "sr_item_sk"
+      ],
+      "store_sales": [
+        "ss_sold_date_sk",
+        "ss_item_sk"
+      ],
+      "web_returns": [
+        "wr_returned_date_sk",
+        "wr_item_sk"
+      ],
+      "web_sales": [
+        "ws_sold_date_sk",
+        "ws_item_sk"
+      ]
+    }
+  },
+  "motherduck": {
+    "clustering": {},
+    "distribution": {},
+    "notes": "DuckDB-native; no clustering / distribution knobs surfaced.",
+    "partitioning": {}
+  },
+  "redshift": {
+    "clustering": {},
+    "distribution": {
+      "catalog_returns": {
+        "dist_key": "cr_item_sk",
+        "dist_style": "KEY",
+        "sort_keys": [
+          "cr_returned_date_sk"
+        ]
+      },
+      "catalog_sales": {
+        "dist_key": "cs_item_sk",
+        "dist_style": "KEY",
+        "sort_keys": [
+          "cs_sold_date_sk"
+        ]
+      },
+      "inventory": {
+        "dist_key": "inv_item_sk",
+        "dist_style": "KEY",
+        "sort_keys": [
+          "inv_date_sk"
+        ]
+      },
+      "store_returns": {
+        "dist_key": "sr_item_sk",
+        "dist_style": "KEY",
+        "sort_keys": [
+          "sr_returned_date_sk"
+        ]
+      },
+      "store_sales": {
+        "dist_key": "ss_item_sk",
+        "dist_style": "KEY",
+        "sort_keys": [
+          "ss_sold_date_sk"
+        ]
+      },
+      "web_returns": {
+        "dist_key": "wr_item_sk",
+        "dist_style": "KEY",
+        "sort_keys": [
+          "wr_returned_date_sk"
+        ]
+      },
+      "web_sales": {
+        "dist_key": "ws_item_sk",
+        "dist_style": "KEY",
+        "sort_keys": [
+          "ws_sold_date_sk"
+        ]
+      }
+    },
+    "notes": "DISTKEY on the natural join column (item_sk) and SORTKEY on (date_sk) for date-range pruning. Distribution is fixed at CREATE TABLE \u2014 apply step rebuilds via CTAS.",
+    "partitioning": {}
+  },
+  "snowflake": {
+    "clustering": {
+      "catalog_returns": [
+        "cr_returned_date_sk",
+        "cr_item_sk"
+      ],
+      "catalog_sales": [
+        "cs_sold_date_sk",
+        "cs_item_sk"
+      ],
+      "inventory": [
+        "inv_date_sk",
+        "inv_item_sk"
+      ],
+      "store_returns": [
+        "sr_returned_date_sk",
+        "sr_item_sk"
+      ],
+      "store_sales": [
+        "ss_sold_date_sk",
+        "ss_item_sk"
+      ],
+      "web_returns": [
+        "wr_returned_date_sk",
+        "wr_item_sk"
+      ],
+      "web_sales": [
+        "ws_sold_date_sk",
+        "ws_item_sk"
+      ]
+    },
+    "distribution": {},
+    "notes": "CLUSTER BY on the seven fact tables. Snowflake auto-clusters in the background; the apply step issues ALTER TABLE ... CLUSTER BY (date_sk, item_sk).",
+    "partitioning": {}
+  }
+}

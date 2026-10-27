@@ -1,0 +1,707 @@
+# Estuary captures: SF1000 Parquet from S3 — SPLIT ACROSS 24 CAPTURE TASKS.
+#
+# SF1000 is ~13.3B documents (TPC-DS 6.3B + DSB 6.9B per the expected-count
+# manifests), far more than one capture task should carry; splitting the ingest
+# across tasks scales throughput linearly. The 48 table streams are LPT-packed
+# (biggest-first, least-loaded bin; sized by sf100 counts x10, the "est docs"
+# comments below, which overstate the tables that grow sublinearly such as
+# inventory) into 24 captures: wall-clock is lower-bounded by the largest single
+# stream regardless of task count, so 24 packed tasks match 48 per-stream tasks
+# while staying comfortably inside the tenant task allowance.
+#
+# Every task here carries `shards.disable: true`, so publishing this file
+# creates or updates the captures paused; remove the flag to run the ingest.
+#
+# source-s3.flow.yaml carries no sf1000 bindings: the two specs must never
+# both carry them, or the shared target collections ingest every document
+# twice (delta-update materializations would double-count). Do NOT add
+# sf1000 bindings to source-s3 after these captures are torn down: a new
+# binding starts a fresh backfill and re-ingests everything.
+#
+# Teardown after ingest completes (counts validated on all engines):
+#   uv run benchmark flow-delete ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-partNN ...
+#
+# Apply with:
+#   uv run benchmark flow-auth
+#   uv run benchmark flow-publish sf1000-captures
+#
+# Env vars expected (resolved by `benchmark flow-publish`):
+#   ESTUARY_ACCOUNT, BENCHMARK_S3_BUCKET, AWS_REGION,
+#   ESTUARY_S3_AWS_ACCESS_KEY_ID, ESTUARY_S3_AWS_SECRET_ACCESS_KEY
+
+captures:
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part01:
+    # ~3,993,300,000 est docs: tpcds/inventory
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/inventory.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/inventory
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part02:
+    # ~3,993,300,000 est docs: dsb/inventory
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/inventory.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/inventory
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part03:
+    # ~2,879,970,240 est docs: tpcds/store_sales
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      # SPLIT: runtime-v2 stalls on a single 85 GB file, so this binding
+      # sweeps the ~4.5 GB part-*.parquet under the <table>/ prefix
+      # (stream = prefix in source-s3).
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/store_sales/" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/store_sales
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part04:
+    # ~2,879,970,240 est docs: dsb/store_sales
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/store_sales/" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/store_sales
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part05:
+    # ~1,439,970,650 est docs: tpcds/catalog_sales
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/catalog_sales/" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/catalog_sales
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part06:
+    # ~1,439,922,990 est docs: dsb/catalog_sales
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/catalog_sales/" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/catalog_sales
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part07:
+    # ~720,012,370 est docs: tpcds/web_sales
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/web_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_sales
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part08:
+    # ~720,012,370 est docs: dsb/web_sales
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/web_sales.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_sales
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part09:
+    # ~719,937,800 est docs: dsb/store_returns
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/store_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/store_returns
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part10:
+    # ~287,922,820 est docs: tpcds/store_returns
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/store_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/store_returns
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part11:
+    # ~215,986,280 est docs: dsb/catalog_returns
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/catalog_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/catalog_returns
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part12:
+    # ~144,018,010 est docs: dsb/web_returns
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/web_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_returns
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part13:
+    # ~143,992,210 est docs: tpcds/catalog_returns
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/catalog_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/catalog_returns
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part14:
+    # ~71,992,290 est docs: tpcds/web_returns
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/web_returns.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_returns
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part15:
+    # ~20,000,000 est docs: tpcds/customer
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/customer.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/customer
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part16:
+    # ~20,000,000 est docs: dsb/customer
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/customer.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/customer
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part17:
+    # ~19,208,000 est docs: tpcds/customer_demographics
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/customer_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/customer_demographics
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part18:
+    # ~19,208,000 est docs: dsb/customer_demographics
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/customer_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/customer_demographics
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part19:
+    # ~10,000,000 est docs: dsb/customer_address
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/customer_address.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/customer_address
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part20:
+    # ~10,000,000 est docs: tpcds/customer_address
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/customer_address.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/customer_address
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part21:
+    # ~2,040,000 est docs: tpcds/item
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/item.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/item
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part22:
+    # ~2,040,000 est docs: dsb/item
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/item.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/item
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part23:
+    # ~1,906,550 est docs: tpcds/time_dim, tpcds/date_dim, tpcds/catalog_page, tpcds/household_demographics, tpcds/web_page, tpcds/promotion, tpcds/store, tpcds/reason, tpcds/call_center, tpcds/web_site, tpcds/income_band, dsb/income_band, tpcds/warehouse
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/time_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/time_dim
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/date_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/date_dim
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/catalog_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/catalog_page
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/household_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/household_demographics
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/web_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_page
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/promotion.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/promotion
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/store.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/store
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/reason.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/reason
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/call_center.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/call_center
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/web_site.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_site
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/income_band.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/income_band
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/income_band.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/income_band
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/warehouse.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/warehouse
+
+  ${ESTUARY_ACCOUNT}/benchmark/captures/sf1000-part24:
+    # ~1,906,550 est docs: dsb/time_dim, dsb/date_dim, dsb/catalog_page, dsb/household_demographics, dsb/web_page, dsb/promotion, dsb/store, dsb/reason, dsb/call_center, dsb/web_site, tpcds/ship_mode, dsb/ship_mode, dsb/warehouse
+    shards:
+      disable: true
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/source-s3:v2
+        config:
+          bucket: ${BENCHMARK_S3_BUCKET}
+          region: ${AWS_REGION}
+          prefix: data/
+          credentials:
+            auth_type: AWSAccessKey
+            aws_access_key_id: ${ESTUARY_S3_AWS_ACCESS_KEY_ID}
+            aws_secret_access_key: ${ESTUARY_S3_AWS_SECRET_ACCESS_KEY}
+          parser:
+            format:
+              type: auto
+    bindings:
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/time_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/time_dim
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/date_dim.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/date_dim
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/catalog_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/catalog_page
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/household_demographics.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/household_demographics
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/web_page.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_page
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/promotion.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/promotion
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/store.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/store
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/reason.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/reason
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/call_center.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/call_center
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/web_site.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_site
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/tpcds/sf1000/ship_mode.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/ship_mode
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/ship_mode.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/ship_mode
+
+      - resource: { stream: "${BENCHMARK_S3_BUCKET}/data/dsb/sf1000/warehouse.parquet" }
+        target: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/warehouse

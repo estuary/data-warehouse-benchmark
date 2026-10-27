@@ -1,0 +1,376 @@
+:root {
+  /* Estuary's visual identity (estuary.dev/brand-guidelines): Dark Blue, Gray,
+     Blue, Green and the Violet tints. --accent is Estuary Blue darkened just
+     enough for 4.5:1 text contrast on white and on --panel; --brand-blue is the
+     exact brand value, for fills that carry no small text. */
+  --brand-dark: #04192b;
+  --brand-blue: #5072eb;
+  --brand-green: #6ed5d6;
+  --violet-300: #a4b6f4;
+  --ink: #04192b;
+  --muted: #47506d;
+  --faint: #5c6584;
+  --line: #e1e5f2;
+  --line-soft: #eef1fd;
+  --bg: #ffffff;
+  --panel: #f6f8fe;
+  --accent: #4267e9;
+  --accent-hover: #3b5bdb;
+  --accent-soft: #eef1fd;
+  --font-sans: "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Layout. Mirrored by src/plot-helpers.js so plots fill their column. */
+  --content-max: 1080px;
+  --nav-w: 220px;
+  --page-gap: 40px;
+  /* Sticky control bar height, for scroll offsets. This is the fallback;
+     src/pages/compare.js measures the real bar and overwrites it, because the
+     bar wraps to two or three rows depending on the viewport width. */
+  --controls-h: 136px;
+  /* The page's top padding; the header band pulls itself up by the same amount
+     to sit flush with the window's top edge. */
+  --page-pad-top: 32px;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0 auto;
+  padding: var(--page-pad-top) 32px 80px;
+  max-width: 1400px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 1rem/1.6 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 { font-size: 2.125rem; line-height: 1.2; margin: 0 0 12px; letter-spacing: -0.02em; }
+h2 { font-size: 1.5rem; margin: 0 0 6px; letter-spacing: -0.01em; }
+h3 { font-size: 0.9375rem; margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+
+a { color: var(--accent); }
+
+/* Charts in the site's typeface: Plot sets system-ui as an SVG attribute, which
+   any stylesheet rule outranks. */
+svg[font-family] { font-family: var(--font-sans); }
+/* Plot's default type is 10 px; axes and tips read at 12. The size stays in
+   px because each chart's margins are laid out in px. */
+svg[font-size="10"] { font-size: 12px; }
+
+/* Text sizes are in rem so they follow the reader's browser setting; at the
+   default 16 px nothing is under 12 px, a size `small` must not undercut. */
+small { font-size: max(0.75rem, 0.85em); }
+
+.lede { color: var(--muted); margin: 0 0 18px; font-size: 1.0625rem; }
+
+.cta { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 22px; }
+.btn {
+  display: inline-block; font: inherit; font-size: 0.9375rem; font-weight: 600;
+  padding: 9px 16px; border-radius: 8px; text-decoration: none; line-height: 1.2;
+  border: 1px solid transparent;
+}
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-secondary { background: #fff; color: var(--ink); border-color: var(--line); }
+.btn-secondary:hover { border-color: var(--muted); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.facts {
+  display: flex; flex-wrap: wrap; gap: 8px 28px;
+  list-style: none; padding: 12px 16px; margin: 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  font-size: 0.875rem; color: var(--muted);
+}
+.facts b { color: var(--ink); font-variant-numeric: tabular-nums; font-size: 0.9375rem; }
+.fineprint { margin: 10px 0 14px; font-size: 0.8125rem; color: var(--faint); }
+
+.status { margin: 28px 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); }
+.error { color: #a01b1b; }
+.error p { color: var(--muted); margin: 8px 0 0; }
+
+/* ── Two-column page: sticky view nav beside the content ─────────────────── */
+.page {
+  display: grid;
+  grid-template-columns: var(--nav-w) minmax(0, 1fr);
+  gap: var(--page-gap);
+  align-items: start;
+  margin-top: 28px;
+}
+.content { min-width: 0; max-width: var(--content-max); }
+
+#toc {
+  position: sticky; top: 24px;
+  font-size: 0.875rem;
+}
+#toc .toc-title {
+  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--faint); margin: 0 0 8px 10px; font-weight: 600;
+}
+#toc ol { list-style: none; margin: 0 0 14px; padding: 0; }
+#toc button {
+  display: block; width: 100%; text-align: left;
+  font: inherit; color: var(--muted); background: none; border: 0;
+  border-left: 2px solid transparent; border-radius: 0 6px 6px 0;
+  padding: 6px 10px; cursor: pointer; line-height: 1.35;
+}
+#toc button:hover { color: var(--ink); background: var(--panel); }
+#toc button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+#toc button.active { color: var(--ink); font-weight: 600; border-left-color: var(--accent); background: var(--accent-soft); }
+#toc button .n { display: inline-block; min-width: 1.4em; color: var(--faint); font-variant-numeric: tabular-nums; }
+#toc button.active .n { color: var(--accent); }
+#toc .toc-group { margin-top: 12px; }
+
+/* ── Sticky control bar, grouped and labelled ────────────────────────────── */
+.controls {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 28px;
+  margin: 0 0 12px; padding: 12px 18px 12px;
+  background: rgba(247, 248, 250, 0.94); border: 1px solid var(--line); border-radius: 10px;
+  backdrop-filter: blur(8px);
+}
+/* A group never widens the bar: a long option label makes a <select> truncate
+   its text rather than push the page past the viewport on a phone. */
+.ctl-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 100%; }
+.ctl-group > label, .ctl-group .input > label, .ctl-label {
+  font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--muted); font-weight: 600;
+}
+.ctl-label small { font-size: 0.8125rem; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--faint); margin-left: 6px; }
+/* Mosaic renders label + input inline; stack them under the group heading. */
+.ctl-group .input { display: flex; flex-direction: column; gap: 4px; }
+.controls select { font: inherit; font-size: 0.875rem; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: #fff; max-width: 100%; }
+.controls input[type="range"] { vertical-align: middle; width: 200px; accent-color: var(--accent); }
+.ctl-sla-row { display: flex; align-items: flex-end; gap: 10px; }
+/* Mosaic's slider prints its raw value ("5000") as a second label; the
+   readout beside it says the same thing in seconds, so hide the duplicate. */
+.ctl-sla-row .input > label.value { display: none; }
+.ctl-value { font-size: 0.875rem; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 4ch; }
+.ctl-engines { flex: 1 1 320px; }
+.ctl-reset {
+  align-self: flex-end; margin-left: auto;
+  font: inherit; font-size: 0.8125rem; color: var(--muted);
+  background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer;
+}
+.ctl-reset:hover { color: var(--ink); border-color: var(--muted); }
+.ctl-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Select all, under the engine legend: the same quiet button as Reset filters. */
+.ctl-select-all {
+  align-self: flex-start; margin-top: 6px; font: inherit; font-size: 0.8125rem; color: var(--muted);
+  background: none; border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; cursor: pointer;
+}
+.ctl-select-all:hover { color: var(--ink); border-color: var(--muted); }
+.ctl-select-all:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ── Views as cards ──────────────────────────────────────────────────────── */
+.view {
+  margin: 24px 0 0; padding: 22px 24px 20px;
+  background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  scroll-margin-top: calc(var(--controls-h) + 16px);
+}
+.view h2 { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.takeaway { margin: 0 0 12px; font-size: 1rem; color: var(--ink); max-width: 90ch; line-height: 1.5; }
+.takeaway b { color: var(--accent); }
+
+.note { color: var(--muted); font-size: 0.875rem; margin: 0 0 12px; max-width: 90ch; }
+.note b { color: var(--ink); }
+
+/* The long methodology text folds away behind one line; the chart stays the lead. */
+details.how { margin: 0 0 14px; }
+details.how > summary {
+  cursor: pointer; font-size: 0.875rem; color: var(--accent); padding: 2px 0; width: fit-content;
+}
+details.how > .note { margin-top: 8px; padding: 12px 14px; background: var(--panel); border-radius: 8px; border: 1px solid var(--line); }
+
+/* Plots and the configuration table can exceed the column on narrow screens;
+   scroll inside the card rather than clip or widen the page. The table sits
+   one level down, inside its <details>, so it needs naming separately. */
+.view > div, .table-details > div { overflow-x: auto; }
+/* A scroll area in the tab order (src/site/a11y.js focusableScrollAreas). */
+[data-scroll-area]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Plot gives every SVG max-width: 100% and wraps it in a flex row, so an 812 px
+   seven-panel ladder in a 330 px card would shrink to 40% with 5 px type. Below
+   the width where the shrink stays legible (about 90%, so 12 px type stays
+   11 px or more: a card of about 730 px), let the ladders keep their size and
+   scroll sideways, and say so, since a phone shows no scroll bar. */
+@media (max-width: 860px) {
+  .ladder svg { max-width: none; flex: none; }
+  .ladder::before {
+    content: "Scroll sideways to see every panel \2192";
+    position: sticky; left: 0; display: block; margin: 0 0 4px;
+    font-size: 0.8125rem; color: var(--muted);
+  }
+}
+
+footer { margin-top: 40px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); scroll-margin-top: calc(var(--controls-h) + 16px); }
+footer ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 0.875rem; }
+footer li { margin-bottom: 10px; max-width: 90ch; }
+footer b { color: var(--ink); }
+
+code {
+  font: 0.8125rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--panel); padding: 1px 5px; border-radius: 4px; border: 1px solid var(--line);
+}
+
+/* Mosaic legend: make swatches read as clickable controls. The swatches are
+   made focusable by src/a11y.js; give keyboard users the same affordance. */
+.legend { font-size: 0.875rem; }
+/* Plot writes its swatch labels at 10 px, behind a zero-specificity :where(). */
+[class*="-swatches"] { font-size: 0.8125rem; }
+/* The key to the response-time charts' red marks, beside the price legend. */
+.ring-key { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 6px 0 4px; font-size: 0.8125rem; color: var(--ink); }
+.ring-key span { display: inline-flex; align-items: center; gap: 6px; }
+.legend > div, .legend > span { cursor: pointer; }
+/* A toggle is a target: at least 24 px tall (WCAG 2.5.8), however small its label. */
+.legend [role="button"] { cursor: pointer; border-radius: 4px; padding: 1px 5px; min-height: 24px; }
+.legend [role="button"]:hover { background: #fff; }
+.legend [role="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* The configuration table under the frontier: collapsed by default so the
+   chart stays the lead, one click away for anyone who wants the numbers. */
+.table-details { margin-top: 12px; }
+.table-details > summary { cursor: pointer; font-size: 0.875rem; color: var(--accent); padding: 4px 0; width: fit-content; }
+.table-details > summary:hover { text-decoration: underline; }
+.table-details > .note { margin-top: 8px; }
+.configs { font-size: 0.875rem; border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.configs th { text-align: right; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); padding: 6px 10px; cursor: pointer; white-space: nowrap; user-select: none; }
+.configs th:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.configs th.sorted { color: var(--ink); }
+.configs td { text-align: right; padding: 5px 10px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+.configs th.text, .configs td.text { text-align: left; }
+.configs td.text:first-child { font-weight: 600; }
+.configs .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: -1px; }
+.configs tr.zero td { color: var(--muted); }
+.configs tbody tr { cursor: pointer; }
+.configs tbody tr:hover td { background: var(--panel); }
+.configs tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.configs tr.selected td { background: var(--accent-soft); }
+.configs tr.selected td.text:first-child { color: var(--accent); }
+.configs caption { caption-side: bottom; text-align: left; color: var(--muted); font-size: 0.8125rem; padding-top: 6px; }
+
+/* Section band separating the concurrency study from the warm study. */
+h2.band {
+  margin: 8px 0 0;
+  padding: 10px 0 8px;
+  border-bottom: 2px solid var(--ink);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink);
+}
+.band-sub { color: var(--muted); font-size: 0.875rem; margin: 8px 0 0; max-width: 90ch; }
+
+/* ── At a glance: quadrant beside two stacked bars ───────────────────────── */
+.glance { border-color: var(--line); background: linear-gradient(180deg, var(--panel), #fff); }
+/* The quadrant is pinned to its SVG; the side column takes what is left and
+   wraps its captions inside that, so long titles cannot push it below.
+   Whether the two sit side by side is decided once, in plot-helpers.js, by
+   the widths it gives the SVGs: when it splits the column they fit on one
+   row, when it does not the quadrant takes the whole row and the side wraps
+   under it. No viewport breakpoint here, so CSS and JS cannot disagree (a
+   disagreement collapses the side column to 0 px). */
+.duo { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.quadrant { flex: 0 0 auto; max-width: 100%; }
+/* The quadrant's width is its plot's. Its captions and legend fill that width
+   but must not set it: a paragraph's natural width is its unwrapped length,
+   and a long footnote would make the flex item span the column and push the
+   side charts underneath on every desktop width. */
+.quadrant > .chart-title, .quadrant > .chart-foot, .quadrant > #legend-frontier { width: 0; min-width: 100%; }
+.glance-side { flex: 1 1 0; min-width: min(280px, 100%); }
+.chart-title { margin: 0 0 4px; font-size: 0.875rem; font-weight: 600; color: var(--muted); letter-spacing: 0.01em; }
+.chart-title b { color: var(--ink); }
+.chart-foot { margin: 2px 0 12px; font-size: 0.8125rem; color: var(--faint); }
+.chart-foot b { color: var(--muted); }
+/* Quadrant captions sit inside the plot area; the plot's own margins are
+   72 / 76 / 24 / 40 px (left / right / top / bottom), see views/warm.js.
+   On a phone the plot is about 320 px wide and views/warm.js trims the right
+   margin, so only the one caption that carries the message stays. */
+#view-frontier { position: relative; display: inline-block; }
+.q {
+  position: absolute; pointer-events: none;
+  font-size: 0.75rem; line-height: 1.15; text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint);
+  /* A faint backing keeps the caption legible when a dot lands under it. */
+  background: rgba(255, 255, 255, 0.85); padding: 1px 4px; border-radius: 3px;
+}
+/* Marks stay >= 28px inside the plot area (xInset/yInset in views/warm.js), so
+   captions parked in that gutter band never sit on a dot. */
+.q-tl { left: 80px; top: 25px; }
+.q-tr { right: 84px; top: 25px; }
+.q-bl { left: 80px; bottom: 41px; color: var(--accent); font-weight: 700; }
+.q-br { right: 84px; bottom: 41px; }
+
+/* ── Data set: ClickBench has no TPC-DS/DSB pair ──────────────────────────
+   src/pages/compare.js puts `clickbench` on <body> while that data set is
+   selected. What needs the pair (skew, query patterns, the across-volumes
+   sweep) is marked `.ds-only`; ClickBench's own captions are `.cb-only`. */
+body.clickbench .ds-only { display: none; }
+body:not(.clickbench) .cb-only { display: none; }
+
+/* Standalone legends mounted above their plot. */
+#legend-patternload,
+#legend-degradation,
+#legend-cfrontier { margin-bottom: 8px; }
+
+/* ── Below the side-nav breakpoint: one column, nav becomes a chip strip ──── */
+@media (max-width: 1100px) {
+  .page { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .content { max-width: none; }
+  #toc { position: static; margin-bottom: 16px; }
+  #toc .toc-title { display: none; }
+  #toc ol { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
+  #toc .toc-group { margin-top: 0; }
+  #toc button {
+    width: auto; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px;
+    background: #fff;
+  }
+  #toc button.active { border-color: var(--accent); background: var(--accent-soft); }
+}
+
+/* Narrow screens: a tall sticky control bar would eat the viewport, so it
+   scrolls with the page instead. Plots already fit or scroll sideways. */
+@media (max-width: 640px) {
+  :root { --page-pad-top: 20px; }
+  body { padding: var(--page-pad-top) 16px 60px; }
+  .controls { position: static; }
+  .view { padding: 16px 14px; }
+  h1 { font-size: 1.625rem; }
+  h2 { font-size: 1.25rem; }
+  .controls input[type="range"] { width: 150px; }
+  /* Plot lays the engine swatches out in four CSS columns inline; two fit. */
+  .controls .legend [class*="-swatches"] { columns: 2 !important; }
+}
+@media (max-width: 480px) {
+  .q-tl, .q-tr, .q-br { display: none; }
+}
+
+/* ── Bottom lines: computed from the filtered data, set apart from the prose ── */
+.synth {
+  margin: 14px 0 2px; padding: 12px 16px 12px 18px;
+  border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 10px 10px 0;
+}
+.synth-label {
+  display: block; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent); margin-bottom: 4px;
+}
+.synth p { margin: 0; font-size: 0.9375rem; line-height: 1.55; color: var(--ink); max-width: 95ch; }
+.synth p:empty::before { content: "Computing"; color: var(--faint); }
+.synth-caveat { color: var(--muted); }
+/* The At a glance line is the page's conclusion: it leads its section. */
+.synth-lead { margin: 0 0 16px; }
+.synth-lead p { font-size: 1.0625rem; }
+
+#legend-frontier { margin: 2px 0 0; }
+#legend-skewload { margin-bottom: 8px; }
+
+/* Terms, in the methodology notes. */
+.terms { columns: 2; column-gap: 32px; margin: 8px 0 0; padding: 0; list-style: none; }
+.terms li { break-inside: avoid; margin-bottom: 7px; font-size: 0.875rem; color: var(--muted); line-height: 1.45; }
+.terms b { color: var(--ink); }
+@media (max-width: 760px) { .terms { columns: 1; } }
+
+/* On a touch screen the engine swatches in the filter bar are the only way to
+   choose engines: more room than the 24 px minimum between neighbouring rows. */
+@media (pointer: coarse) {
+  .controls .legend [class*="-swatches"] > div { padding: 5px 0; }
+}

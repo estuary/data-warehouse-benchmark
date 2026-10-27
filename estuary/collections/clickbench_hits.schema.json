@@ -1,0 +1,809 @@
+{
+  "key": [
+    "/_meta/file",
+    "/_meta/offset"
+  ],
+  "schema": {
+    "properties": {
+      "AdvEngineID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "Age": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "BrowserCountry": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "BrowserLanguage": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "CLID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "ClientEventTime": {
+        "format": "date-time",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "ClientIP": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "ClientTimeZone": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "CodeVersion": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "ConnectTiming": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "CookieEnable": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "CounterClass": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "CounterID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "DNSTiming": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "DontCountHits": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "EventDate": {
+        "format": "date",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "EventTime": {
+        "format": "date-time",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "FUniqID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "FetchTiming": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "FlashMajor": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "FlashMinor": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "FlashMinor2": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "FromTag": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "GoodEvent": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "HID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "HTTPError": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "HasGCLID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "HistoryLength": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "HitColor": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "IPNetworkID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "Income": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "Interests": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "IsArtifical": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "IsDownload": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "IsEvent": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "IsLink": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "IsMobile": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "IsNotBounce": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "IsOldCounter": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "IsParameter": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "IsRefresh": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "JavaEnable": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "JavascriptEnable": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "LocalEventTime": {
+        "format": "date-time",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "MobilePhone": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "MobilePhoneModel": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "NetMajor": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "NetMinor": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "OS": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "OpenerName": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "OpenstatAdID": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "OpenstatCampaignID": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "OpenstatServiceName": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "OpenstatSourceID": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "OriginalURL": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "PageCharset": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "ParamCurrency": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "ParamCurrencyID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "ParamOrderID": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "ParamPrice": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "Params": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "Referer": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "RefererCategoryID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "RefererHash": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "RefererRegionID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "RegionID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "RemoteIP": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "ResolutionDepth": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "ResolutionHeight": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "ResolutionWidth": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "ResponseEndTiming": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "ResponseStartTiming": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "Robotness": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "SearchEngineID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "SearchPhrase": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "SendTiming": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "Sex": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "SilverlightVersion1": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "SilverlightVersion2": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "SilverlightVersion3": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "SilverlightVersion4": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "SocialAction": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "SocialNetwork": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "SocialSourceNetworkID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "SocialSourcePage": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "Title": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "TraficSourceID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "URL": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "URLCategoryID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "URLHash": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "URLRegionID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "UTMCampaign": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "UTMContent": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "UTMMedium": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "UTMSource": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "UTMTerm": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "UserAgent": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "UserAgentMajor": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "UserAgentMinor": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "UserID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "WatchID": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "WindowClientHeight": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "WindowClientWidth": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "WindowName": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "WithHash": {
+        "format": "integer",
+        "type": [
+          "string",
+          "integer",
+          "null"
+        ]
+      },
+      "_meta": {
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file",
+          "offset"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "_meta"
+    ],
+    "type": "object"
+  }
+}

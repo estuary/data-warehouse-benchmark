@@ -1,0 +1,3 @@
+SELECT
+  COUNT_BIG(DISTINCT SearchPhrase)
+FROM hits

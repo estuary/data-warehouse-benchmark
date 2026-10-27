@@ -1,0 +1,35 @@
+/* Overview page. */
+/* Scoped to its page: the site is one document whose pages swap in place
+   (src/site/router.js), so every stylesheet is loaded on every page.
+   :where() adds no specificity, so each rule weighs as it would unscoped. */
+:where(.page-index, .page-method) {
+  .home .hero-home { max-width: 94ch; padding: 4px 0 8px; }
+  .home .hero-home .lede { font-size: 1.125rem; color: var(--ink); }
+  .home .hero-home > p:not(.eyebrow) { color: var(--muted); max-width: 88ch; }
+  .home .hero-home .facts { margin-top: 6px; }
+  /* Two cards to a row at most, so each question reads as a sentence, not a column. */
+  .start-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 760px) { .start-grid { grid-template-columns: 1fr; } }
+  .start {
+    display: block; padding: 18px 20px; border: 1px solid var(--line); border-radius: 10px;
+    color: var(--ink); text-decoration: none; background: #fff;
+  }
+  a.start:hover { border-color: var(--accent); background: var(--accent-soft); }
+  a.start:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .start b { display: block; margin-bottom: 6px; font-size: 1.25rem; line-height: 1.3; }
+  .start span { display: block; color: var(--muted); font-size: 1.0625rem; line-height: 1.5; }
+  .engine-links { display: flex !important; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; }
+  .engine-links a { font-size: 0.9375rem; display: inline-block; padding: 2px 0; }
+  .plain-list { padding-left: 20px; margin: 0; }
+  .plain-list li { margin-bottom: 8px; max-width: 92ch; }
+  .finding p { max-width: 92ch; }
+  .finding .more, .card .more { margin: 10px 0 0; font-size: 0.9375rem; }
+  .data-table td.good { background: #e8f5ec; font-weight: 600; }
+  .data-table .rank { color: var(--faint); font-size: 0.8125rem; margin-left: 4px; }
+  .data-table .muted { color: var(--faint); }
+  .data-table.idle td { font-size: 0.875rem; }
+  .engine-inline { display: block; margin-top: 4px; }
+}
+
+/* Finding 4: keep each engine's swatch and name on one line. */
+.data-table.idle td:first-child { white-space: nowrap; }

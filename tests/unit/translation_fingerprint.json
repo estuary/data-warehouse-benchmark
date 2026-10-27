@@ -1,0 +1,12 @@
+{
+  "sqlglot": "30.11.0",
+  "engines": {
+    "bigquery": "1c1ec6df04c08ce6fb24345ed5eb028718e023f8cd37873705b5792ab51af8d4",
+    "clickhouse": "55ce13ae41e7894869c8b2b263eaedea9f449b6f8125403781063aeb23ddb25a",
+    "databricks": "a7915f8d728615692871ebb40cf73ba1bccadf042a615b1f03da56d340b1811c",
+    "fabric": "e55830d07ae1e49bcc2c03cb09950ab078f4bc3b4e52bd64eabd0f57b1a00650",
+    "motherduck": "b0181beb2f2e9dbf4f1b2d7c2980777b113a96f8a005c8b40c377cdcfb8ab391",
+    "redshift": "2d6ec2376efe7ed09b3a8bf5498626e611b7a1b1f6681318b31281ec4d1f9778",
+    "snowflake": "1f3831f4afa1cdedb1127f74f0efa9b7006ceb6a6f303055d6239458163c9a9a"
+  }
+}

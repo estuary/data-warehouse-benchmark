@@ -1,0 +1,37 @@
+# Git hooks for the 2026 benchmark, run via prek (a fast pre-commit
+# reimplementation that reads this same .pre-commit-config.yaml).
+#
+# Install once with:
+#   prek install
+#
+# Then every `git commit` runs ruff format + lint on the staged files. Run
+# manually across the repo with:
+#   prek run --all-files
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.18
+    hooks:
+      # Auto-format Python files (mirrors `uv run ruff format src/`).
+      - id: ruff-format
+        types_or: [python, pyi]
+      # Lint + auto-fix Python files (mirrors `uv run ruff check src/ --fix`).
+      # `--exit-non-zero-on-fix` makes the commit fail when fixes are applied
+      # so the operator re-stages the formatted/fixed files intentionally.
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # Catch obvious whitespace / EOL slip-ups before they hit CI.
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]

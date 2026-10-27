@@ -1,0 +1,1478 @@
+# Estuary materialization: TPC-DS + DSB (SF1–SF1000) + ClickBench -> Databricks SQL.
+#
+# 15 materialization blocks: TPC-DS and DSB each at SF1/SF10/SF100/SF1000, plus
+# per-suite SF1000 fact splits (below), plus ClickBench (single scale), writing
+# into one schema per suite and scale inside the ${DATABRICKS_CATALOG} catalog;
+# scale is the schema suffix:
+#   <catalog>.tpcds_sf<N>  — 24 TPC-DS tables (uniform data)
+#   <catalog>.dsb_sf<N>    — 24 DSB tables    (skewed-distribution data)
+#   <catalog>.clickbench   — 1 ClickBench hits table
+#
+# This matches the schema convention every other engine uses and the one the
+# benchmark CLI's `sql`/`validate-sf1` commands pass to the connector
+# (DatabricksConnector qualifies tables as <catalog>.<schema>.<table>, with
+# schema = tpcds_sf{N} / dsb_sf{N} / clickbench).
+#
+# Apply with:
+#   uv run benchmark flow-auth
+#   uv run benchmark flow-publish databricks
+#
+# At SF1000 the four fact tables are split into dedicated mats
+# (databricks-<suite>-store-sales-sf1000, -catalog-sales-, -web-inventory-), writing
+# into the same <suite>_sf1000 schema: one Estuary task is one sequential pipeline,
+# so dedicated tasks parallelize the big fact backfills (the Redshift spec's split).
+#
+# Every mat writes through DATABRICKS_LOADER_SQL_HTTP_PATH, which defaults to the
+# benchmark warehouse (DATABRICKS_SQL_HTTP_PATH). Point it at a separate warehouse to
+# keep a long load off the warehouse being measured.
+#
+# Env vars expected (resolved by `benchmark flow-publish` from env/<section>.env):
+#   ESTUARY_ACCOUNT, DATABRICKS_HOST, DATABRICKS_LOADER_SQL_HTTP_PATH,
+#   DATABRICKS_TOKEN, DATABRICKS_CATALOG
+
+materializations:
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-tpcds-sf1:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: tpcds_sf1
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/call_center
+        resource: { table: call_center, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/catalog_page
+        resource: { table: catalog_page, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/catalog_returns
+        resource: { table: catalog_returns, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/catalog_sales
+        resource: { table: catalog_sales, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/customer
+        resource: { table: customer, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/customer_address
+        resource: { table: customer_address, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/customer_demographics
+        resource: { table: customer_demographics, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/date_dim
+        resource: { table: date_dim, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/household_demographics
+        resource: { table: household_demographics, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/income_band
+        resource: { table: income_band, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/inventory
+        resource: { table: inventory, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/item
+        resource: { table: item, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/promotion
+        resource: { table: promotion, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/reason
+        resource: { table: reason, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/ship_mode
+        resource: { table: ship_mode, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/store
+        resource: { table: store, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/store_returns
+        resource: { table: store_returns, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/store_sales
+        resource: { table: store_sales, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/time_dim
+        resource: { table: time_dim, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/warehouse
+        resource: { table: warehouse, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_page
+        resource: { table: web_page, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_returns
+        resource: { table: web_returns, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_sales
+        resource: { table: web_sales, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_site
+        resource: { table: web_site, schema: tpcds_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-dsb-sf1:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: dsb_sf1
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/call_center
+        resource: { table: call_center, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/catalog_page
+        resource: { table: catalog_page, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/catalog_returns
+        resource: { table: catalog_returns, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/catalog_sales
+        resource: { table: catalog_sales, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/customer
+        resource: { table: customer, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/customer_address
+        resource: { table: customer_address, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/customer_demographics
+        resource: { table: customer_demographics, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/date_dim
+        resource: { table: date_dim, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/household_demographics
+        resource: { table: household_demographics, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/income_band
+        resource: { table: income_band, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/inventory
+        resource: { table: inventory, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/item
+        resource: { table: item, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/promotion
+        resource: { table: promotion, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/reason
+        resource: { table: reason, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/ship_mode
+        resource: { table: ship_mode, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/store
+        resource: { table: store, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/store_returns
+        resource: { table: store_returns, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/store_sales
+        resource: { table: store_sales, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/time_dim
+        resource: { table: time_dim, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/warehouse
+        resource: { table: warehouse, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_page
+        resource: { table: web_page, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_returns
+        resource: { table: web_returns, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_sales
+        resource: { table: web_sales, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_site
+        resource: { table: web_site, schema: dsb_sf1, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-clickbench:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: clickbench
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/clickbench/hits
+        resource: { table: hits, schema: clickbench, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-tpcds-sf10:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: tpcds_sf10
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/call_center
+        resource: { table: call_center, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/catalog_page
+        resource: { table: catalog_page, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/catalog_returns
+        resource: { table: catalog_returns, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/catalog_sales
+        resource: { table: catalog_sales, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/customer
+        resource: { table: customer, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/customer_address
+        resource: { table: customer_address, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/customer_demographics
+        resource: { table: customer_demographics, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/date_dim
+        resource: { table: date_dim, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/household_demographics
+        resource: { table: household_demographics, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/income_band
+        resource: { table: income_band, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/inventory
+        resource: { table: inventory, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/item
+        resource: { table: item, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/promotion
+        resource: { table: promotion, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/reason
+        resource: { table: reason, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/ship_mode
+        resource: { table: ship_mode, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/store
+        resource: { table: store, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/store_returns
+        resource: { table: store_returns, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/store_sales
+        resource: { table: store_sales, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/time_dim
+        resource: { table: time_dim, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/warehouse
+        resource: { table: warehouse, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_page
+        resource: { table: web_page, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_returns
+        resource: { table: web_returns, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_sales
+        resource: { table: web_sales, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_site
+        resource: { table: web_site, schema: tpcds_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-dsb-sf10:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: dsb_sf10
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/call_center
+        resource: { table: call_center, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/catalog_page
+        resource: { table: catalog_page, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/catalog_returns
+        resource: { table: catalog_returns, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/catalog_sales
+        resource: { table: catalog_sales, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/customer
+        resource: { table: customer, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/customer_address
+        resource: { table: customer_address, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/customer_demographics
+        resource: { table: customer_demographics, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/date_dim
+        resource: { table: date_dim, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/household_demographics
+        resource: { table: household_demographics, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/income_band
+        resource: { table: income_band, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/inventory
+        resource: { table: inventory, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/item
+        resource: { table: item, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/promotion
+        resource: { table: promotion, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/reason
+        resource: { table: reason, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/ship_mode
+        resource: { table: ship_mode, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/store
+        resource: { table: store, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/store_returns
+        resource: { table: store_returns, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/store_sales
+        resource: { table: store_sales, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/time_dim
+        resource: { table: time_dim, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/warehouse
+        resource: { table: warehouse, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_page
+        resource: { table: web_page, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_returns
+        resource: { table: web_returns, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_sales
+        resource: { table: web_sales, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_site
+        resource: { table: web_site, schema: dsb_sf10, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-tpcds-sf100:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: tpcds_sf100
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/call_center
+        resource: { table: call_center, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/catalog_page
+        resource: { table: catalog_page, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/catalog_returns
+        resource: { table: catalog_returns, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/catalog_sales
+        resource: { table: catalog_sales, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/customer
+        resource: { table: customer, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/customer_address
+        resource: { table: customer_address, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/customer_demographics
+        resource: { table: customer_demographics, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/date_dim
+        resource: { table: date_dim, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/household_demographics
+        resource: { table: household_demographics, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/income_band
+        resource: { table: income_band, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/inventory
+        resource: { table: inventory, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/item
+        resource: { table: item, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/promotion
+        resource: { table: promotion, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/reason
+        resource: { table: reason, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/ship_mode
+        resource: { table: ship_mode, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/store
+        resource: { table: store, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/store_returns
+        resource: { table: store_returns, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/store_sales
+        resource: { table: store_sales, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/time_dim
+        resource: { table: time_dim, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/warehouse
+        resource: { table: warehouse, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_page
+        resource: { table: web_page, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_returns
+        resource: { table: web_returns, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_sales
+        resource: { table: web_sales, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_site
+        resource: { table: web_site, schema: tpcds_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-dsb-sf100:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: dsb_sf100
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/call_center
+        resource: { table: call_center, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/catalog_page
+        resource: { table: catalog_page, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/catalog_returns
+        resource: { table: catalog_returns, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/catalog_sales
+        resource: { table: catalog_sales, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/customer
+        resource: { table: customer, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/customer_address
+        resource: { table: customer_address, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/customer_demographics
+        resource: { table: customer_demographics, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/date_dim
+        resource: { table: date_dim, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/household_demographics
+        resource: { table: household_demographics, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/income_band
+        resource: { table: income_band, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/inventory
+        resource: { table: inventory, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/item
+        resource: { table: item, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/promotion
+        resource: { table: promotion, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/reason
+        resource: { table: reason, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/ship_mode
+        resource: { table: ship_mode, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/store
+        resource: { table: store, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/store_returns
+        resource: { table: store_returns, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/store_sales
+        resource: { table: store_sales, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/time_dim
+        resource: { table: time_dim, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/warehouse
+        resource: { table: warehouse, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_page
+        resource: { table: web_page, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_returns
+        resource: { table: web_returns, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_sales
+        resource: { table: web_sales, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_site
+        resource: { table: web_site, schema: dsb_sf100, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-tpcds-sf1000:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: tpcds_sf1000
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/call_center
+        resource: { table: call_center, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/catalog_page
+        resource: { table: catalog_page, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/catalog_returns
+        resource: { table: catalog_returns, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/customer
+        resource: { table: customer, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/customer_address
+        resource: { table: customer_address, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/customer_demographics
+        resource: { table: customer_demographics, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/date_dim
+        resource: { table: date_dim, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/household_demographics
+        resource: { table: household_demographics, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/income_band
+        resource: { table: income_band, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/item
+        resource: { table: item, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/promotion
+        resource: { table: promotion, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/reason
+        resource: { table: reason, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/ship_mode
+        resource: { table: ship_mode, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/store
+        resource: { table: store, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/store_returns
+        resource: { table: store_returns, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/time_dim
+        resource: { table: time_dim, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/warehouse
+        resource: { table: warehouse, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_page
+        resource: { table: web_page, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_returns
+        resource: { table: web_returns, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_site
+        resource: { table: web_site, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-dsb-sf1000:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: dsb_sf1000
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/call_center
+        resource: { table: call_center, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/catalog_page
+        resource: { table: catalog_page, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/catalog_returns
+        resource: { table: catalog_returns, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/customer
+        resource: { table: customer, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/customer_address
+        resource: { table: customer_address, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/customer_demographics
+        resource: { table: customer_demographics, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/date_dim
+        resource: { table: date_dim, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/household_demographics
+        resource: { table: household_demographics, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/income_band
+        resource: { table: income_band, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/item
+        resource: { table: item, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/promotion
+        resource: { table: promotion, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/reason
+        resource: { table: reason, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/ship_mode
+        resource: { table: ship_mode, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/store
+        resource: { table: store, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/store_returns
+        resource: { table: store_returns, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/time_dim
+        resource: { table: time_dim, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/warehouse
+        resource: { table: warehouse, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_page
+        resource: { table: web_page, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_returns
+        resource: { table: web_returns, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_site
+        resource: { table: web_site, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-tpcds-store-sales-sf1000:
+    # Split out of databricks-tpcds-sf1000: one Estuary task is one
+    # sequential pipeline, so dedicated tasks parallelize the 1 TB fact backfill
+    # (the Redshift spec's split). Same schema as the parent task.
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: tpcds_sf1000
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/store_sales
+        resource: { table: store_sales, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-tpcds-catalog-sales-sf1000:
+    # Split out of databricks-tpcds-sf1000: one Estuary task is one
+    # sequential pipeline, so dedicated tasks parallelize the 1 TB fact backfill
+    # (the Redshift spec's split). Same schema as the parent task.
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: tpcds_sf1000
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/catalog_sales
+        resource: { table: catalog_sales, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-tpcds-web-inventory-sf1000:
+    # Split out of databricks-tpcds-sf1000: one Estuary task is one
+    # sequential pipeline, so dedicated tasks parallelize the 1 TB fact backfill
+    # (the Redshift spec's split). Same schema as the parent task.
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: tpcds_sf1000
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_sales
+        resource: { table: web_sales, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/inventory
+        resource: { table: inventory, schema: tpcds_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-dsb-store-sales-sf1000:
+    # Split out of databricks-dsb-sf1000: one Estuary task is one
+    # sequential pipeline, so dedicated tasks parallelize the 1 TB fact backfill
+    # (the Redshift spec's split). Same schema as the parent task.
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: dsb_sf1000
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/store_sales
+        resource: { table: store_sales, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-dsb-catalog-sales-sf1000:
+    # Split out of databricks-dsb-sf1000: one Estuary task is one
+    # sequential pipeline, so dedicated tasks parallelize the 1 TB fact backfill
+    # (the Redshift spec's split). Same schema as the parent task.
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: dsb_sf1000
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/catalog_sales
+        resource: { table: catalog_sales, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/databricks-dsb-web-inventory-sf1000:
+    # Split out of databricks-dsb-sf1000: one Estuary task is one
+    # sequential pipeline, so dedicated tasks parallelize the 1 TB fact backfill
+    # (the Redshift spec's split). Same schema as the parent task.
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-databricks:dev
+        config:
+          address: ${DATABRICKS_HOST}
+          http_path: ${DATABRICKS_LOADER_SQL_HTTP_PATH}
+          credentials:
+            auth_type: PAT
+            personal_access_token: ${DATABRICKS_TOKEN}
+          catalog_name: ${DATABRICKS_CATALOG}
+          schema_name: dsb_sf1000
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_sales
+        resource: { table: web_sales, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/inventory
+        resource: { table: inventory, schema: dsb_sf1000, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]

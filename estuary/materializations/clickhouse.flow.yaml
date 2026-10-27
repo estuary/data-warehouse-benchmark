@@ -1,0 +1,1640 @@
+# Estuary materialization: TPC-DS + DSB (SF1–SF1000) + ClickBench -> ClickHouse Cloud.
+#
+# 21 materialization blocks: TPC-DS and DSB each at SF1/SF10/SF100/SF1000, plus
+# per-suite SF100+SF1000 fact splits (store-sales / catalog-sales / web-inventory — one
+# Estuary task = one sequential pipeline, so the big facts backfill in parallel), plus
+# ClickBench (single scale). Each suite and scale is its own ClickHouse database
+# (ClickHouse has no schema-inside-database concept, so suite+scale ↔ database); a
+# split writes into its suite's database at that scale:
+#   tpcds_sf<N>  — 24 TPC-DS tables (uniform data)
+#   dsb_sf<N>    — 24 DSB tables    (skewed-distribution data)
+#   clickbench   — 1 hits table     (web analytics, full ~100M-row typed file)
+#
+# Connector: materialize-clickhouse. Authenticates with user + password over the
+# service's native-secure port (9440). The connector creates tables but not
+# databases, so `benchmark flow-publish clickhouse` first runs
+# CREATE DATABASE IF NOT EXISTS for every database named below
+# (staging/clickhouse_prepare.py; also `benchmark clickhouse-prepare-databases`).
+#
+# Apply with:
+#   uv run benchmark flow-auth
+#   uv run benchmark flow-publish clickhouse
+#
+# Env vars expected (resolved by `benchmark flow-publish` from env/<section>.env):
+#   ESTUARY_ACCOUNT,
+#   CLICKHOUSE_HOST, CLICKHOUSE_USER, CLICKHOUSE_PASSWORD
+
+materializations:
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-tpcds-sf1:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: tpcds_sf1
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/call_center
+        resource: { table: call_center, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/catalog_page
+        resource: { table: catalog_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/catalog_returns
+        resource: { table: catalog_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/catalog_sales
+        resource: { table: catalog_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/customer
+        resource: { table: customer, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/customer_address
+        resource: { table: customer_address, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/customer_demographics
+        resource: { table: customer_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/date_dim
+        resource: { table: date_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/household_demographics
+        resource: { table: household_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/income_band
+        resource: { table: income_band, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/inventory
+        resource: { table: inventory, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/item
+        resource: { table: item, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/promotion
+        resource: { table: promotion, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/reason
+        resource: { table: reason, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/ship_mode
+        resource: { table: ship_mode, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/store
+        resource: { table: store, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/store_returns
+        resource: { table: store_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/store_sales
+        resource: { table: store_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/time_dim
+        resource: { table: time_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/warehouse
+        resource: { table: warehouse, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_page
+        resource: { table: web_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_returns
+        resource: { table: web_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_sales
+        resource: { table: web_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1/web_site
+        resource: { table: web_site, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-dsb-sf1:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: dsb_sf1
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/call_center
+        resource: { table: call_center, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/catalog_page
+        resource: { table: catalog_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/catalog_returns
+        resource: { table: catalog_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/catalog_sales
+        resource: { table: catalog_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/customer
+        resource: { table: customer, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/customer_address
+        resource: { table: customer_address, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/customer_demographics
+        resource: { table: customer_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/date_dim
+        resource: { table: date_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/household_demographics
+        resource: { table: household_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/income_band
+        resource: { table: income_band, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/inventory
+        resource: { table: inventory, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/item
+        resource: { table: item, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/promotion
+        resource: { table: promotion, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/reason
+        resource: { table: reason, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/ship_mode
+        resource: { table: ship_mode, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/store
+        resource: { table: store, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/store_returns
+        resource: { table: store_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/store_sales
+        resource: { table: store_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/time_dim
+        resource: { table: time_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/warehouse
+        resource: { table: warehouse, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_page
+        resource: { table: web_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_returns
+        resource: { table: web_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_sales
+        resource: { table: web_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1/web_site
+        resource: { table: web_site, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-clickbench:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: clickbench
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/clickbench/hits
+        resource: { table: hits, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-tpcds-sf10:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: tpcds_sf10
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/call_center
+        resource: { table: call_center, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/catalog_page
+        resource: { table: catalog_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/catalog_returns
+        resource: { table: catalog_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/catalog_sales
+        resource: { table: catalog_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/customer
+        resource: { table: customer, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/customer_address
+        resource: { table: customer_address, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/customer_demographics
+        resource: { table: customer_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/date_dim
+        resource: { table: date_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/household_demographics
+        resource: { table: household_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/income_band
+        resource: { table: income_band, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/inventory
+        resource: { table: inventory, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/item
+        resource: { table: item, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/promotion
+        resource: { table: promotion, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/reason
+        resource: { table: reason, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/ship_mode
+        resource: { table: ship_mode, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/store
+        resource: { table: store, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/store_returns
+        resource: { table: store_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/store_sales
+        resource: { table: store_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/time_dim
+        resource: { table: time_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/warehouse
+        resource: { table: warehouse, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_page
+        resource: { table: web_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_returns
+        resource: { table: web_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_sales
+        resource: { table: web_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf10/web_site
+        resource: { table: web_site, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-dsb-sf10:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: dsb_sf10
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/call_center
+        resource: { table: call_center, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/catalog_page
+        resource: { table: catalog_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/catalog_returns
+        resource: { table: catalog_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/catalog_sales
+        resource: { table: catalog_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/customer
+        resource: { table: customer, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/customer_address
+        resource: { table: customer_address, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/customer_demographics
+        resource: { table: customer_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/date_dim
+        resource: { table: date_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/household_demographics
+        resource: { table: household_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/income_band
+        resource: { table: income_band, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/inventory
+        resource: { table: inventory, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/item
+        resource: { table: item, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/promotion
+        resource: { table: promotion, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/reason
+        resource: { table: reason, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/ship_mode
+        resource: { table: ship_mode, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/store
+        resource: { table: store, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/store_returns
+        resource: { table: store_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/store_sales
+        resource: { table: store_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/time_dim
+        resource: { table: time_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/warehouse
+        resource: { table: warehouse, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_page
+        resource: { table: web_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_returns
+        resource: { table: web_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_sales
+        resource: { table: web_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf10/web_site
+        resource: { table: web_site, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-tpcds-sf100:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: tpcds_sf100
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/call_center
+        resource: { table: call_center, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/catalog_page
+        resource: { table: catalog_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/catalog_returns
+        resource: { table: catalog_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/customer
+        resource: { table: customer, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/customer_address
+        resource: { table: customer_address, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/customer_demographics
+        resource: { table: customer_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/date_dim
+        resource: { table: date_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/household_demographics
+        resource: { table: household_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/income_band
+        resource: { table: income_band, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/item
+        resource: { table: item, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/promotion
+        resource: { table: promotion, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/reason
+        resource: { table: reason, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/ship_mode
+        resource: { table: ship_mode, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/store
+        resource: { table: store, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/store_returns
+        resource: { table: store_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/time_dim
+        resource: { table: time_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/warehouse
+        resource: { table: warehouse, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_page
+        resource: { table: web_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_returns
+        resource: { table: web_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_site
+        resource: { table: web_site, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-dsb-sf100:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: dsb_sf100
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/call_center
+        resource: { table: call_center, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/catalog_page
+        resource: { table: catalog_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/catalog_returns
+        resource: { table: catalog_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/customer
+        resource: { table: customer, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/customer_address
+        resource: { table: customer_address, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/customer_demographics
+        resource: { table: customer_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/date_dim
+        resource: { table: date_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/household_demographics
+        resource: { table: household_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/income_band
+        resource: { table: income_band, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/item
+        resource: { table: item, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/promotion
+        resource: { table: promotion, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/reason
+        resource: { table: reason, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/ship_mode
+        resource: { table: ship_mode, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/store
+        resource: { table: store, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/store_returns
+        resource: { table: store_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/time_dim
+        resource: { table: time_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/warehouse
+        resource: { table: warehouse, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_page
+        resource: { table: web_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_returns
+        resource: { table: web_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_site
+        resource: { table: web_site, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-tpcds-sf1000:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: tpcds_sf1000
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/call_center
+        resource: { table: call_center, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/catalog_page
+        resource: { table: catalog_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/catalog_returns
+        resource: { table: catalog_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/customer
+        resource: { table: customer, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/customer_address
+        resource: { table: customer_address, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/customer_demographics
+        resource: { table: customer_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/date_dim
+        resource: { table: date_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/household_demographics
+        resource: { table: household_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/income_band
+        resource: { table: income_band, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/item
+        resource: { table: item, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/promotion
+        resource: { table: promotion, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/reason
+        resource: { table: reason, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/ship_mode
+        resource: { table: ship_mode, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/store
+        resource: { table: store, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/store_returns
+        resource: { table: store_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/time_dim
+        resource: { table: time_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/warehouse
+        resource: { table: warehouse, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_page
+        resource: { table: web_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_returns
+        resource: { table: web_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_site
+        resource: { table: web_site, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-dsb-sf1000:
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: dsb_sf1000
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/call_center
+        resource: { table: call_center, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/catalog_page
+        resource: { table: catalog_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/catalog_returns
+        resource: { table: catalog_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/customer
+        resource: { table: customer, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/customer_address
+        resource: { table: customer_address, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/customer_demographics
+        resource: { table: customer_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/date_dim
+        resource: { table: date_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/household_demographics
+        resource: { table: household_demographics, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/income_band
+        resource: { table: income_band, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/item
+        resource: { table: item, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/promotion
+        resource: { table: promotion, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/reason
+        resource: { table: reason, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/ship_mode
+        resource: { table: ship_mode, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/store
+        resource: { table: store, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/store_returns
+        resource: { table: store_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/time_dim
+        resource: { table: time_dim, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/warehouse
+        resource: { table: warehouse, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_page
+        resource: { table: web_page, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_returns
+        resource: { table: web_returns, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_site
+        resource: { table: web_site, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-tpcds-store-sales-sf1000:
+    # Split out of clickhouse-tpcds-sf1000: each materialization
+    # is one sequential Estuary pipeline, so the giant SF1000 facts get
+    # their own tasks for parallel backfill. Same endpoint/database.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: tpcds_sf1000
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/store_sales
+        resource: { table: store_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-tpcds-catalog-sales-sf1000:
+    # Split out of clickhouse-tpcds-sf1000: each materialization
+    # is one sequential Estuary pipeline, so the giant SF1000 facts get
+    # their own tasks for parallel backfill. Same endpoint/database.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: tpcds_sf1000
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/catalog_sales
+        resource: { table: catalog_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-tpcds-web-inventory-sf1000:
+    # Split out of clickhouse-tpcds-sf1000: each materialization
+    # is one sequential Estuary pipeline, so the giant SF1000 facts get
+    # their own tasks for parallel backfill. Same endpoint/database.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: tpcds_sf1000
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/web_sales
+        resource: { table: web_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf1000/inventory
+        resource: { table: inventory, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-dsb-store-sales-sf1000:
+    # Split out of clickhouse-dsb-sf1000: each materialization
+    # is one sequential Estuary pipeline, so the giant SF1000 facts get
+    # their own tasks for parallel backfill. Same endpoint/database.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: dsb_sf1000
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/store_sales
+        resource: { table: store_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-dsb-catalog-sales-sf1000:
+    # Split out of clickhouse-dsb-sf1000: each materialization
+    # is one sequential Estuary pipeline, so the giant SF1000 facts get
+    # their own tasks for parallel backfill. Same endpoint/database.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: dsb_sf1000
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/catalog_sales
+        resource: { table: catalog_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-dsb-web-inventory-sf1000:
+    # Split out of clickhouse-dsb-sf1000: each materialization
+    # is one sequential Estuary pipeline, so the giant SF1000 facts get
+    # their own tasks for parallel backfill. Same endpoint/database.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: dsb_sf1000
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/web_sales
+        resource: { table: web_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf1000/inventory
+        resource: { table: inventory, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-tpcds-store-sales-sf100:
+    # Split out of clickhouse-tpcds-sf100: one Estuary task =
+    # one sequential pipeline; dedicated tasks parallelize the fact backfill.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: tpcds_sf100
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/store_sales
+        resource: { table: store_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-tpcds-catalog-sales-sf100:
+    # Split out of clickhouse-tpcds-sf100: one Estuary task =
+    # one sequential pipeline; dedicated tasks parallelize the fact backfill.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: tpcds_sf100
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/catalog_sales
+        resource: { table: catalog_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-tpcds-web-inventory-sf100:
+    # Split out of clickhouse-tpcds-sf100: one Estuary task =
+    # one sequential pipeline; dedicated tasks parallelize the fact backfill.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: tpcds_sf100
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/web_sales
+        resource: { table: web_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/tpcds/sf100/inventory
+        resource: { table: inventory, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-dsb-store-sales-sf100:
+    # Split out of clickhouse-dsb-sf100: one Estuary task =
+    # one sequential pipeline; dedicated tasks parallelize the fact backfill.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: dsb_sf100
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/store_sales
+        resource: { table: store_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-dsb-catalog-sales-sf100:
+    # Split out of clickhouse-dsb-sf100: one Estuary task =
+    # one sequential pipeline; dedicated tasks parallelize the fact backfill.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: dsb_sf100
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/catalog_sales
+        resource: { table: catalog_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+  ${ESTUARY_ACCOUNT}/benchmark/materializations/clickhouse-dsb-web-inventory-sf100:
+    # Split out of clickhouse-dsb-sf100: one Estuary task =
+    # one sequential pipeline; dedicated tasks parallelize the fact backfill.
+    # runtime-v2 on the production (non-BYOC) data-plane. Roll changes out per
+    # block via scoped publish + backfill bump, never full-spec (docs/OPERATOR_GUIDE.md).
+    shards:
+      flags:
+        enable-runtime-v2: "true"
+    endpoint:
+      connector:
+        image: ghcr.io/estuary/materialize-clickhouse:v1
+        config:
+          # Native TCP-secure port (9440), not the HTTPS port (8443) the
+          # Python harness uses — Estuary's materializer speaks the native
+          # protocol.
+          address: ${CLICKHOUSE_HOST}:9440
+          database: dsb_sf100
+          credentials:
+            auth_type: user_password
+            username: ${CLICKHOUSE_USER}
+            password: ${CLICKHOUSE_PASSWORD}
+    bindings:
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/web_sales
+        resource: { table: web_sales, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]
+      - source: ${ESTUARY_ACCOUNT}/benchmark/dsb/sf100/inventory
+        resource: { table: inventory, delta_updates: true }
+        backfill: 1
+        fields:
+          recommended: true
+          exclude: [flow_published_at]

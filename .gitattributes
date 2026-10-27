@@ -1,0 +1,19 @@
+# Git LFS.
+#
+# Patterns are scoped to exact paths rather than globbing `*.parquet` or
+# `*.duckdb`. The generated benchmark data under data/ is ~9 GB of Parquet and
+# is gitignored; a bare `*.parquet` rule here would silently arm it for LFS the
+# moment any of those ignore rules changed.
+
+# The results database: every measured query execution, tens of MB. Shipping it is
+# what makes the analysis reproducible from a clone: `uv run benchmark analyze`
+# regenerates every export below from this file.
+results/benchmark.duckdb filter=lfs diff=lfs merge=lfs -text
+
+# The published analysis exports. Small, but binary, so they belong beside the
+# database.
+results/exports/*.parquet filter=lfs diff=lfs merge=lfs -text
+
+# DuckDB-WASM, staged into the viz app by scripts/prepare-data.mjs. Tracked so a
+# clone can build and serve the explorer without reaching a CDN at runtime.
+viz/public/duckdb/*.wasm filter=lfs diff=lfs merge=lfs -text
