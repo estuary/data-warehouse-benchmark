@@ -1,5 +1,7 @@
 # 2026 Cloud Data Warehouse Benchmark
 
+Get the full report [here](https://estuary.dev/data-warehouse-benchmark-report/).
+
 Run jointly by [Estuary](https://estuary.dev) and [CorrDyn](https://corrdyn.com). CorrDyn designed the benchmark, wrote the code, and ran it end to end. Estuary is the apparatus for data replication across the seven warehouses: one capture fed all seven from the same stored copy of the data. Estuary was not one of the systems measured or compared.
 
 ## What This Is
